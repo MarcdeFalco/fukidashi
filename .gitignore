@@ -18,3 +18,7 @@ android/local.properties
 android/.idea/
 *.iml
 export/data/
+# Clé de publication Play Store (à sauvegarder hors du dépôt !)
+android/keystore.properties
+android/*.jks
+android/models/src/

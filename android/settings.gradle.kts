@@ -14,4 +14,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "JapaneseHelper"
-include(":core", ":app")
+include(":core", ":app", ":models")

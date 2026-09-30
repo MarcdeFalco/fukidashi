@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     kotlin("android")
@@ -14,17 +16,36 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1"
+        versionName = "1.0"
         // Téléphones récents et émulateur Apple Silicon : évite d'embarquer 4 ABI d'ONNX Runtime
         ndk { abiFilters += "arm64-v8a" }
     }
 
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+    // Clé de publication (upload key) : android/keystore.properties, hors git.
+    // À SAUVEGARDER : sans elle, impossible de mettre à jour l'appli sur le Play Store.
+    val keystoreProps = rootProject.file("keystore.properties").takeIf { it.exists() }
+        ?.let { f -> Properties().apply { f.inputStream().use { load(it) } } }
+    signingConfigs {
+        if (keystoreProps != null) {
+            create("upload") {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
         }
     }
+
+    buildTypes {
+        release {
+            // Pas de minification : Kuromoji et ONNX Runtime s'appuient sur la réflexion / JNI
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("upload") ?: signingConfigs.getByName("debug")
+        }
+    }
+
+    // Play Store : modèles et dictionnaire dans le pack de ressources :models
+    assetPacks += ":models"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -48,7 +69,9 @@ android {
         }
     }
 
-    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/models"))
+    // En debug (APK installé par adb), les modèles sont dans l'APK ; en release (AAB),
+    // ils sont dans le pack :models
+    sourceSets["debug"].assets.srcDir(layout.buildDirectory.dir("generated/models"))
 }
 
 // Modèles produits par export/export_models.py (non versionnés) : détecteur et encodeur
@@ -95,3 +118,12 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
     implementation("androidx.camera:camera-view:$cameraxVersion")
 }
+
+// Même contenu dans le pack :models pour l'AAB de publication
+val copyModelsToPack by tasks.registering(Sync::class) {
+    from(copyModels)
+    into(rootProject.file("models/src/main/assets/models"))
+}
+tasks.matching { it.name.contains("assetPack", ignoreCase = true) || it.name == "bundleRelease" }
+    .configureEach { dependsOn(copyModelsToPack) }
+project(":models").tasks.matching { it.name.contains("Release") }.configureEach { dependsOn(copyModelsToPack) }
