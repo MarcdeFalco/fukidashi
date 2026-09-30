@@ -24,7 +24,7 @@ import kotlin.system.measureTimeMillis
  * Détecteur et encodeur (taille fixe) sur le NPU, décodeur (taille variable) sur le CPU.
  * Sans NPU (émulateur, autre puce), tout passe sur le CPU, en plus lent.
  */
-class OcrEngine(private val context: Context) {
+class OcrEngine(private val context: Context, private val forceCpu: Boolean = false) {
     private val mutex = Mutex()
     internal var detector: BubbleDetector? = null
         private set
@@ -57,6 +57,7 @@ class OcrEngine(private val context: Context) {
         val version = context.packageManager.getPackageInfo(context.packageName, 0).lastUpdateTime
         val key = asset.substringAfterLast('/').removeSuffix(".onnx") + "@$version"
         return try {
+            if (forceCpu) error("CPU forcé")
             val model = Accelerators.npuModel(context, key, CPU_THREADS) {
                 onStatus("Optimisation pour le NPU (première fois, ~1 min)…")
                 copyAsset(asset)

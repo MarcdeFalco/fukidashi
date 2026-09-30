@@ -7,7 +7,8 @@ set -euo pipefail
 export LC_ALL=en_US.UTF-8
 ADB="${ADB:-$HOME/Library/Android/sdk/platform-tools/adb}"
 SERIAL="${SERIAL:-RZCY12QPR0D}"
-PKG=dev.marc.japanesehelper
+PKG=app.fukidashi
+ACTIVITY=$PKG/dev.marc.japanesehelper.BenchmarkActivity
 TMP=/data/local/tmp/jh
 # Dossier interne de l'appli (accessible via run-as, version debug seulement)
 REMOTE=files
@@ -36,7 +37,7 @@ run)
     shift
     adb shell am force-stop $PKG
     adb logcat -c
-    adb shell am start -W -n $PKG/.BenchmarkActivity "$@" >/dev/null
+    adb shell am start -W -n $ACTIVITY "$@" >/dev/null
     # Attend la fin (jusqu'à 10 min : la 1re compilation NPU peut être longue)
     for _ in $(seq 1 600); do
         if adb logcat -d -s Bench:I | grep -q " FIN$"; then break; fi

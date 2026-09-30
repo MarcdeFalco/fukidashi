@@ -9,7 +9,8 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "dev.marc.japanesehelper"
+        // Identifiant Play Store : définitif une fois l'appli publiée
+        applicationId = "app.fukidashi"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
@@ -42,22 +43,18 @@ android {
         resources { excludes += listOf("META-INF/CONTRIBUTORS.md", "META-INF/LICENSE.md", "META-INF/NOTICE.md") }
         jniLibs {
             useLegacyPackaging = true
-            // NPU : seul le HTP V79 (Snapdragon 8 Elite) ; ni GPU, ni DSP, ni autres générations
-            excludes += listOf(
-                "**/libQnnGpu.so", "**/libQnnDsp*.so",
-                "**/libQnnHtpV68*.so", "**/libQnnHtpV69*.so", "**/libQnnHtpV73*.so",
-                "**/libQnnHtpV75*.so", "**/libQnnHtpV81*.so",
-            )
+            // NPU : HTP de toutes les générations de Snapdragon (V68 = 888 … V81) ; ni GPU ni DSP
+            excludes += listOf("**/libQnnGpu.so", "**/libQnnDsp*.so")
         }
     }
 
     sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/models"))
 }
 
-// Modèles produits par export/export_models.py (non versionnés) :
-// détecteur et encodeur en fp16 (NPU), décodeur en int8 (CPU)
+// Modèles produits par export/export_models.py (non versionnés) : détecteur et encodeur
+// (poids fp16, calcul fp32 sur CPU ou fp16 sur NPU), décodeur en int8 (CPU)
 val copyModels by tasks.registering(Sync::class) {
-    val out = rootProject.file("../export/out/npu_fp16")
+    val out = rootProject.file("../export/out/app")
     from(out) {
         include("bubble_detector.onnx")
     }

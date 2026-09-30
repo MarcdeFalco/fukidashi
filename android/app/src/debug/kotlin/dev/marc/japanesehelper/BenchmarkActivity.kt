@@ -58,7 +58,8 @@ class BenchmarkActivity : Activity() {
         val decBackend = backendOf("dec_backend")
 
         // Modèles de l'appli (copie + compilation NPU au 1er lancement, chronométrées)
-        val engine = OcrEngine(this@BenchmarkActivity)
+        // --ez force_cpu true : simule un téléphone sans NPU
+        val engine = OcrEngine(this@BenchmarkActivity, forceCpu = x.getBoolean("force_cpu", false))
         val tLoad = System.nanoTime()
         runBlocking { engine.load { log("statut : $it") } }
         val appLoadMs = ms(tLoad)
@@ -83,6 +84,7 @@ class BenchmarkActivity : Activity() {
             else file to Accelerators.options(this, b, threads, qnnExtra)
 
         val env = OrtEnvironment.getEnvironment()
+        config.put("force_cpu", x.getBoolean("force_cpu", false))
         val result = JSONObject().put("config", config).put("app_load_ms", appLoadMs)
 
         // --- Détection ---

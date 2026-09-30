@@ -82,8 +82,52 @@ def fp16():
     print("-> npu_fp16/")
 
 
+def fp16_storage(model):
+    """Poids stockés en fp16, remis en fp32 par un Cast au chargement.
+
+    ONNX Runtime plie ces Cast une fois pour toutes (constant folding) : le graphe
+    exécuté est du fp32, compatible avec tout CPU, et le NPU le calcule en fp16
+    (enable_htp_fp16_precision). Le fichier fait la moitié du fp32.
+    """
+    import numpy as np
+    import onnx
+    from onnx import helper, numpy_helper
+
+    g = model.graph
+    casts, keep = [], []
+    for init in g.initializer:
+        arr = numpy_helper.to_array(init)
+        if arr.dtype != np.float32 or arr.size < 1024:
+            keep.append(init)
+            continue
+        half = numpy_helper.from_array(arr.astype(np.float16), init.name + "_fp16")
+        keep.append(half)
+        casts.append(helper.make_node("Cast", [half.name], [init.name], to=onnx.TensorProto.FLOAT,
+                                      name=init.name + "_to_fp32"))
+    del g.initializer[:]
+    g.initializer.extend(keep)
+    nodes = casts + list(g.node)
+    del g.node[:]
+    g.node.extend(nodes)
+    return model
+
+
+def app_models():
+    """Modèles de l'appli : détecteur et encodeur (poids fp16, NPU ou CPU), décodeur int8 (CPU)."""
+    import onnx
+
+    dst = OUT / "app"
+    dst.mkdir(exist_ok=True)
+    for src, name in [(OUT / "bubble_detector.onnx", "bubble_detector.onnx"),
+                      (OUT / "manga_ocr_cached" / "encoder_kv.onnx", "encoder_kv.onnx")]:
+        onnx.save(fp16_storage(onnx.load(src)), dst / name)
+    shutil.copy(OUT / "manga_ocr_cached_int8" / "decoder_step.onnx", dst)
+    shutil.copy(OUT / "manga_ocr_cached" / "vocab.txt", dst)
+    print("-> app/")
+
+
 if __name__ == "__main__":
-    what = sys.argv[1:] or ["detector", "ocr", "quantize", "cached", "fp16"]
+    what = sys.argv[1:] or ["detector", "ocr", "quantize", "cached", "app"]
     if "detector" in what:
         export_detector()
     if "ocr" in what:
@@ -94,3 +138,5 @@ if __name__ == "__main__":
         cached()
     if "fp16" in what:
         fp16()
+    if "app" in what:
+        app_models()

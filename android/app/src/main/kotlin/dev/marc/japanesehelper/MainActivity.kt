@@ -13,6 +13,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import dev.marc.japanesehelper.ui.AboutScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Intent
 import android.net.Uri
@@ -36,14 +40,19 @@ class MainActivity : ComponentActivity() {
                 val error by vm.error.collectAsStateWithLifecycle()
 
                 val cameraOpen by vm.cameraOpen.collectAsStateWithLifecycle()
+                var aboutOpen by rememberSaveable { mutableStateOf(false) }
 
                 val current = source
                 when {
+                    aboutOpen -> {
+                        BackHandler { aboutOpen = false }
+                        AboutScreen(appVersion(), onClose = { aboutOpen = false })
+                    }
                     cameraOpen -> {
                         BackHandler { vm.closeCamera() }
                         CameraScreen(vm.capturesDir, onCaptured = vm::onPhotoCaptured, onClose = vm::closeCamera)
                     }
-                    current == null -> HomeScreen(vm)
+                    current == null -> HomeScreen(vm, onAbout = { aboutOpen = true })
                     else -> {
                         BackHandler { vm.close() }
                         ReaderScreen(vm, current)
@@ -60,6 +69,8 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    private fun appVersion(): String = packageManager.getPackageInfo(packageName, 0).versionName.orEmpty()
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)

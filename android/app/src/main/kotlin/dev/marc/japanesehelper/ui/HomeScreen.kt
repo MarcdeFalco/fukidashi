@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -24,7 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.marc.japanesehelper.ReaderViewModel
 
 @Composable
-fun HomeScreen(vm: ReaderViewModel) {
+fun HomeScreen(vm: ReaderViewModel, onAbout: () -> Unit) {
     val modelsReady by vm.modelsReady.collectAsStateWithLifecycle()
     val loadingStatus by vm.loadingStatus.collectAsStateWithLifecycle()
     val pickImages = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { vm.open(it) }
@@ -38,8 +39,9 @@ fun HomeScreen(vm: ReaderViewModel) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("日本語ヘルパー", style = MaterialTheme.typography.headlineLarge)
-            Text("Lecture de manga assistée", style = MaterialTheme.typography.titleMedium)
+            Text("吹き出し", style = MaterialTheme.typography.headlineLarge)
+            Text("Fukidashi", style = MaterialTheme.typography.titleLarge)
+            Text("Lire le japonais, bulle par bulle", style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(48.dp))
             Button(onClick = vm::openCamera, Modifier.fillMaxWidth()) {
                 Text("Photographier une page")
@@ -61,6 +63,7 @@ fun HomeScreen(vm: ReaderViewModel) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            TextButton(onClick = onAbout) { Text("À propos et licences") }
         }
     }
 }
