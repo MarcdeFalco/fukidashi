@@ -51,6 +51,16 @@ private class ImagesSource(private val context: Context, private val uris: List<
     }
 }
 
+/** Pages photographiées avec la caméra, dans l'ordre de prise. */
+class CapturedPages(val files: List<File>) : PageSource {
+    override val title = "Photos"
+    override val pageCount = files.size
+
+    override suspend fun load(index: Int) = withContext(Dispatchers.IO) {
+        decode({ files[index].inputStream() })
+    }
+}
+
 private class CbzSource(private val zip: ZipFile, override val title: String) : PageSource {
     private val entries = zip.entries().toList()
         .filter { !it.isDirectory && IMAGE_EXT.any { ext -> it.name.lowercase().endsWith(ext) } }

@@ -41,7 +41,10 @@ fun HomeScreen(vm: ReaderViewModel) {
             Text("日本語ヘルパー", style = MaterialTheme.typography.headlineLarge)
             Text("Lecture de manga assistée", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(48.dp))
-            Button(onClick = { pickImages.launch(arrayOf("image/*")) }, Modifier.fillMaxWidth()) {
+            Button(onClick = vm::openCamera, Modifier.fillMaxWidth()) {
+                Text("Photographier une page")
+            }
+            OutlinedButton(onClick = { pickImages.launch(arrayOf("image/*")) }, Modifier.fillMaxWidth()) {
                 Text("Ouvrir des images")
             }
             OutlinedButton(

@@ -46,6 +46,16 @@ class ReaderViewModel(app: Application) : AndroidViewModel(app) {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _cameraOpen = MutableStateFlow(false)
+    val cameraOpen: StateFlow<Boolean> = _cameraOpen.asStateFlow()
+
+    /** Page à afficher après un changement de source (nouvelle photo). */
+    private val _jumpTo = MutableStateFlow<Int?>(null)
+    val jumpTo: StateFlow<Int?> = _jumpTo.asStateFlow()
+
+    /** Dossier des photos de la séance en cours. */
+    val capturesDir = java.io.File(app.cacheDir, "captures")
+
     private val detecting = mutableSetOf<Int>()
     private var ocrJob: Job? = null
 
@@ -54,7 +64,10 @@ class ReaderViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             runCatching { engine.load { _loadingStatus.value = it } }
                 .onSuccess { _modelsReady.value = true }
-                .onFailure { report("Chargement des modèles impossible", it) }
+                .onFailure {
+                    _loadingStatus.value = "Reconnaissance du texte indisponible sur cet appareil"
+                    report("Chargement des modèles impossible (NPU Qualcomm requis)", it)
+                }
         }
     }
 
@@ -71,6 +84,37 @@ class ReaderViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 .onFailure { report("Ouverture impossible", it) }
         }
+    }
+
+    fun openCamera() {
+        _cameraOpen.value = true
+    }
+
+    fun closeCamera() {
+        _cameraOpen.value = false
+    }
+
+    /** Nouvelle photo : ajoutée à la séance en cours, ou début d'une nouvelle séance. */
+    fun onPhotoCaptured(file: java.io.File) {
+        val current = _source.value as? CapturedPages
+        val files = if (current != null) {
+            current.files + file
+        } else {
+            // Nouvelle séance : on oublie les photos précédentes
+            capturesDir.listFiles()?.filter { it != file }?.forEach { it.delete() }
+            _source.value?.close()
+            detecting.clear()
+            _detections.value = emptyMap()
+            listOf(file)
+        }
+        _selection.value = null
+        _source.value = CapturedPages(files)
+        _jumpTo.value = files.lastIndex
+        _cameraOpen.value = false
+    }
+
+    fun jumpDone() {
+        _jumpTo.value = null
     }
 
     fun close() {

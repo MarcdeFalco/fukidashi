@@ -15,6 +15,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.marc.japanesehelper.ui.CameraScreen
 import dev.marc.japanesehelper.ui.HomeScreen
 import dev.marc.japanesehelper.ui.ReaderScreen
 
@@ -28,12 +29,19 @@ class MainActivity : ComponentActivity() {
                 val source by vm.source.collectAsStateWithLifecycle()
                 val error by vm.error.collectAsStateWithLifecycle()
 
+                val cameraOpen by vm.cameraOpen.collectAsStateWithLifecycle()
+
                 val current = source
-                if (current == null) {
-                    HomeScreen(vm)
-                } else {
-                    BackHandler { vm.close() }
-                    ReaderScreen(vm, current)
+                when {
+                    cameraOpen -> {
+                        BackHandler { vm.closeCamera() }
+                        CameraScreen(vm.capturesDir, onCaptured = vm::onPhotoCaptured, onClose = vm::closeCamera)
+                    }
+                    current == null -> HomeScreen(vm)
+                    else -> {
+                        BackHandler { vm.close() }
+                        ReaderScreen(vm, current)
+                    }
                 }
 
                 error?.let {

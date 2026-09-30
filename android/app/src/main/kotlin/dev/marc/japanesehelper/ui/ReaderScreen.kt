@@ -25,6 +25,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -61,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.marc.japanesehelper.BubbleText
+import dev.marc.japanesehelper.CapturedPages
 import dev.marc.japanesehelper.PageSource
 import dev.marc.japanesehelper.ReaderViewModel
 import dev.marc.japanesehelper.core.Box as TextBox
@@ -79,6 +81,13 @@ fun ReaderScreen(vm: ReaderViewModel, source: PageSource) {
     val modelsReady by vm.modelsReady.collectAsStateWithLifecycle()
     val loadingStatus by vm.loadingStatus.collectAsStateWithLifecycle()
     var zoomed by remember { mutableStateOf(false) }
+    val jumpTo by vm.jumpTo.collectAsStateWithLifecycle()
+    LaunchedEffect(jumpTo, source) {
+        jumpTo?.let {
+            pager.scrollToPage(it)
+            vm.jumpDone()
+        }
+    }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         // Sens de lecture japonais : page suivante à gauche
@@ -117,6 +126,14 @@ fun ReaderScreen(vm: ReaderViewModel, source: PageSource) {
                 .background(Color.Black.copy(alpha = 0.6f), MaterialTheme.shapes.small)
                 .padding(horizontal = 10.dp, vertical = 4.dp),
         )
+
+        // Livre papier : photographier la page suivante
+        if (source is CapturedPages && selection == null) {
+            Button(
+                onClick = vm::openCamera,
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp),
+            ) { Text("Photographier la page suivante") }
+        }
 
         selection?.let { sel ->
             BubblePanel(
