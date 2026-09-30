@@ -1,0 +1,18 @@
+.DS_Store
+*~
+__pycache__/
+.venv/
+# Gros fichiers : modèles et sorties de conversion
+*.pt
+*.onnx
+*.tflite
+export/out/
+debug_bulles/
+test_ocr_debug.jpg
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+*.iml

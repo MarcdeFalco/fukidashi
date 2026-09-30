@@ -1,0 +1,9 @@
+# Python 3.12 (torch ne suit pas toujours la dernière version de Python)
+torch
+transformers<5
+ultralytics
+manga-ocr
+onnx
+onnxruntime
+onnxslim
+optimum[onnx]
