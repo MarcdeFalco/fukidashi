@@ -17,3 +17,4 @@ android/.kotlin/
 android/local.properties
 android/.idea/
 *.iml
+export/data/

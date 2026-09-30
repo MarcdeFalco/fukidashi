@@ -38,6 +38,8 @@ android {
 
     // Les bibliothèques du NPU doivent exister en fichiers sur le disque
     packaging {
+        // Métadonnées en double dans les jars de Kuromoji
+        resources { excludes += listOf("META-INF/CONTRIBUTORS.md", "META-INF/LICENSE.md", "META-INF/NOTICE.md") }
         jniLibs {
             useLegacyPackaging = true
             // NPU : seul le HTP V79 (Snapdragon 8 Elite) ; ni GPU, ni DSP, ni autres générations
@@ -63,9 +65,14 @@ val copyModels by tasks.registering(Sync::class) {
         include("encoder_kv.onnx", "decoder_step.onnx", "vocab.txt")
         into("manga_ocr")
     }
+    // Dictionnaire JMdict + KANJIDIC (export/build_dictionary.py), copié au 1er lancement
+    from(rootProject.file("../export/out")) {
+        include("dictionary.db")
+    }
     into(layout.buildDirectory.dir("generated/models/models"))
     doFirst {
         check(File(out, "encoder_kv.onnx").exists()) { "Modèles absents : lancer d'abord export/export_models.py" }
+        check(rootProject.file("../export/out/dictionary.db").exists()) { "Dictionnaire absent : lancer export/build_dictionary.py" }
     }
 }
 tasks.named("preBuild") { dependsOn(copyModels) }

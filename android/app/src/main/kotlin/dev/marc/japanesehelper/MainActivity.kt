@@ -14,18 +14,24 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.viewModels
+import androidx.core.content.IntentCompat
 import dev.marc.japanesehelper.ui.CameraScreen
 import dev.marc.japanesehelper.ui.HomeScreen
 import dev.marc.japanesehelper.ui.ReaderScreen
 
 class MainActivity : ComponentActivity() {
+    private val vm: ReaderViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        if (savedInstanceState == null) openFrom(intent)
         setContent {
             MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
-                val vm: ReaderViewModel = viewModel()
+                val vm = vm
                 val source by vm.source.collectAsStateWithLifecycle()
                 val error by vm.error.collectAsStateWithLifecycle()
 
@@ -53,5 +59,21 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        openFrom(intent)
+    }
+
+    /** Fichiers reçus d'une autre appli (Ouvrir avec / Partager). */
+    private fun openFrom(intent: Intent) {
+        val uris = when (intent.action) {
+            Intent.ACTION_VIEW -> listOfNotNull(intent.data)
+            Intent.ACTION_SEND -> listOfNotNull(IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java))
+            Intent.ACTION_SEND_MULTIPLE -> IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri::class.java).orEmpty()
+            else -> emptyList()
+        }
+        if (uris.isNotEmpty()) vm.open(uris)
     }
 }

@@ -136,42 +136,13 @@ fun ReaderScreen(vm: ReaderViewModel, source: PageSource) {
         }
 
         selection?.let { sel ->
-            BubblePanel(
-                text = sel.text,
-                onClose = vm::clearSelection,
-                modifier = Modifier.align(Alignment.BottomCenter),
+            StudySheet(
+                selection = sel,
+                onWord = vm::selectWord,
+                onGrammar = vm::selectGrammar,
+                tagLabel = vm::tagLabel,
+                onDismiss = vm::clearSelection,
             )
-        }
-    }
-}
-
-@Composable
-private fun BubblePanel(text: BubbleText, onClose: () -> Unit, modifier: Modifier = Modifier) {
-    val clipboard = LocalClipboardManager.current
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-        tonalElevation = 6.dp,
-        shadowElevation = 8.dp,
-    ) {
-        Column(Modifier.navigationBarsPadding().padding(16.dp)) {
-            when (text) {
-                BubbleText.Reading -> Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(12.dp))
-                    Text("Lecture…")
-                }
-                is BubbleText.Done -> SelectionContainer {
-                    Text(text.text, fontSize = 24.sp, lineHeight = 34.sp)
-                }
-                is BubbleText.Failed -> Text("Erreur : ${text.message}", color = MaterialTheme.colorScheme.error)
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                if (text is BubbleText.Done) {
-                    TextButton(onClick = { clipboard.setText(AnnotatedString(text.text)) }) { Text("Copier") }
-                }
-                TextButton(onClick = onClose) { Text("Fermer") }
-            }
         }
     }
 }

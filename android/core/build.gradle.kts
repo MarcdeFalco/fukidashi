@@ -16,6 +16,9 @@ kotlin {
 val onnxruntimeVersion = "1.30.0"
 
 dependencies {
+    // Analyse morphologique (découpage en mots, lectures, conjugaisons), dictionnaire IPADIC inclus
+    implementation("com.atilika.kuromoji:kuromoji-ipadic:0.9.0")
+
     // Fourni par onnxruntime-android dans l'appli, par onnxruntime (JVM) dans les tests
     compileOnly("com.microsoft.onnxruntime:onnxruntime:$onnxruntimeVersion")
 
@@ -28,6 +31,7 @@ tasks.test {
     useJUnitPlatform()
     systemProperty("models.dir", rootProject.file("../export/out").absolutePath)
     systemProperty("repo.dir", rootProject.file("..").absolutePath)
+    System.getProperty("probe")?.let { systemProperty("probe", it) }
     maxHeapSize = "2g"
     testLogging {
         events("passed", "failed")
