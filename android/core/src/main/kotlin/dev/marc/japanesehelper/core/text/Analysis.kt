@@ -190,6 +190,8 @@ object JapaneseAnalyzer {
             val attach = when {
                 prev == null -> false
                 prev.pos1 == "接頭詞" -> t.pos1 == "名詞"
+                // Ponctuation qui se suit (！！, ……) : un seul bloc
+                t.pos1 == "記号" && prev.pos1 == "記号" -> true
                 t.pos1 == "記号" || prev.pos1 == "記号" -> false
                 // Terminaisons et auxiliaires d'un verbe, adjectif ou copule
                 t.pos1 == "助動詞" -> prevConjugable || prev.pos3 == "助動詞語幹" || prev.pos2 == "形容動詞語幹" ||

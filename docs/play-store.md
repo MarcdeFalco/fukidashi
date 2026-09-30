@@ -30,6 +30,7 @@ Tout fonctionne hors ligne, sur votre téléphone : aucune donnée n'est envoyé
 Accéléré par le NPU des puces Snapdragon, compatible avec tous les Android récents.
 
 Logiciel libre (licence AGPL-3.0). Dictionnaires JMdict et KANJIDIC2 de l'EDRDG (CC BY-SA 4.0).
+Pages d'exemple des captures : « ブラックジャックによろしく », 佐藤秀峰 (œuvre en libre réutilisation).
 
 ## Sécurité des données (formulaire de la console)
 - Données collectées : **aucune**
@@ -48,9 +49,14 @@ servi par GitHub Pages : Settings → Pages → branche `main`, dossier `/docs`)
 ## Éléments graphiques à fournir
 - Icône 512×512 PNG : `docs/store/icon-512.png`
 - Image de présentation 1024×500 : `docs/store/feature-graphic.png`
-- Captures d'écran (2 à 8, téléphone) : **avec des pages dont vous avez les droits**
-  (manga du domaine public, planche personnelle, ou image créée pour l'occasion) — pas de
-  pages de mangas commerciaux.
+- Captures d'écran 1080×2160 : `docs/store/screenshot-1.png` à `-4.png` (lecteur, phrase avec
+  furigana, fiche d'un mot, grammaire), faites avec la page 50 du volume 1 de
+  **« ブラックジャックによろしく » de 佐藤秀峰**, en libre réutilisation, y compris commerciale
+  (conditions : https://densho810.com/free/).
+  - Obligation : mentionner le titre et l'auteur (fait dans la description longue) ;
+  - Obligation : **signaler l'utilisation par e-mail à info@densho810.com dans le mois** suivant
+    la publication de la fiche.
+  - Ne pas utiliser d'autres pages de mangas commerciaux.
 
 ## Avant la production (compte personnel récent)
 Test fermé obligatoire : au moins 12 testeurs inscrits pendant 14 jours consécutifs.

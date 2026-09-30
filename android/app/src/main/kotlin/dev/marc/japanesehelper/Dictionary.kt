@@ -12,6 +12,8 @@ data class DictEntry(
     val id: Long,
     val kanji: List<String>,
     val kana: List<String>,
+    /** Lectures marquées « courantes » dans JMdict. */
+    val commonKana: List<String>,
     val senses: List<Sense>,
     val sensesFr: List<Sense>,
     val common: Boolean,
@@ -51,6 +53,7 @@ class Dictionary private constructor(private val db: SQLiteDatabase) {
                             id = c.getLong(0),
                             kanji = forms(c.getString(1)),
                             kana = forms(c.getString(2)),
+                            commonKana = forms(c.getString(2), commonOnly = true),
                             senses = senses(c.getString(3)),
                             sensesFr = c.getString(4)?.let(::senses).orEmpty(),
                             common = c.getInt(5) == 1,
@@ -73,11 +76,19 @@ class Dictionary private constructor(private val db: SQLiteDatabase) {
         }
 
     /** Libellé d'un code JMdict (nature, registre…) : français pour les plus courants. */
-    fun tagLabel(code: String): String = TAG_FR[code] ?: TAG_FR[code.substringBefore('-') + "*"] ?: tags[code] ?: code
+    fun tagLabel(code: String): String = TAG_FR[code] ?: when {
+        code.startsWith("v5") -> "verbe godan"            // v5k, v5r, v5s…
+        code.startsWith("v1") -> "verbe ichidan"
+        code.startsWith("v2") || code.startsWith("v4") -> "verbe ancien (classique)"
+        code.startsWith("vs") -> "verbe en する"
+        else -> null
+    } ?: tags[code] ?: code
 
     private fun android.database.Cursor.intOrNull(i: Int) = if (isNull(i)) null else getInt(i)
 
-    private fun forms(json: String): List<String> = JSONArray(json).let { a -> List(a.length()) { a.getJSONArray(it).getString(0) } }
+    private fun forms(json: String, commonOnly: Boolean = false): List<String> = JSONArray(json).let { a ->
+        (0 until a.length()).map { a.getJSONArray(it) }.filter { !commonOnly || it.getInt(1) == 1 }.map { it.getString(0) }
+    }
 
     private fun strings(json: String?): List<String> = json?.let { JSONArray(it) }?.let { a -> List(a.length()) { a.getString(it) } }.orEmpty()
 
@@ -109,7 +120,7 @@ class Dictionary private constructor(private val db: SQLiteDatabase) {
         private val TAG_FR = mapOf(
             "n" to "nom", "pn" to "pronom", "n-suf" to "suffixe nominal", "n-pref" to "préfixe nominal",
             "n-adv" to "nom adverbial", "n-t" to "nom temporel", "n-pr" to "nom propre",
-            "v1" to "verbe ichidan", "v5*" to "verbe godan", "vs" to "verbe en する", "vs-i" to "verbe en する",
+            "v1" to "verbe ichidan", "vs" to "verbe en する", "vs-i" to "verbe en する",
             "vk" to "verbe irrégulier 来る", "vz" to "verbe en ずる", "vt" to "transitif", "vi" to "intransitif",
             "v1-s" to "verbe ichidan (くれる)", "vs-s" to "verbe en する (spécial)",
             "adj-i" to "adjectif en -i", "adj-ix" to "adjectif en -i (いい/よい)", "adj-na" to "adjectif en -na",

@@ -11,6 +11,7 @@ import dev.marc.japanesehelper.core.text.Analysis
 import dev.marc.japanesehelper.core.text.GrammarPoint
 import dev.marc.japanesehelper.core.text.JapaneseAnalyzer
 import dev.marc.japanesehelper.core.text.Kana
+import dev.marc.japanesehelper.core.text.WordKind
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
@@ -46,6 +47,8 @@ data class Selection(
     val word: Int? = null,
     val wordInfo: WordInfo? = null,
     val grammar: GrammarPoint? = null,
+    /** Lectures corrigées par JMdict (indice du mot -> lecture), Kuromoji se trompant parfois. */
+    val readings: Map<Int, String> = emptyMap(),
 )
 
 class ReaderViewModel(app: Application) : AndroidViewModel(app) {
@@ -174,6 +177,8 @@ class ReaderViewModel(app: Application) : AndroidViewModel(app) {
             if (text is BubbleText.Done) {
                 val analysis = withContext(Dispatchers.Default) { JapaneseAnalyzer.analyze(text.text) }
                 _selection.update { if (it?.detection == detection) it.copy(analysis = analysis) else it }
+                val readings = runCatching { checkReadings(analysis) }.getOrDefault(emptyMap())
+                _selection.update { if (it?.analysis == analysis) it.copy(readings = readings) else it }
             }
         }
     }
@@ -209,6 +214,32 @@ class ReaderViewModel(app: Application) : AndroidViewModel(app) {
             ?: analysis.words[index].surface
         val kanji = written.filter(Kana::isKanji).toSet().mapNotNull { dict.kanji(it.toString()) }
         WordInfo(results, kanji)
+    }
+
+    /**
+     * Lectures de Kuromoji (IPADIC) vérifiées par JMdict, qui se trompe parfois (夜中 lu
+     * やちゅう, 一人 lu いちにん). Mots de 2 kanji ou plus : on impose la lecture courante de
+     * l'entrée la plus courante. Un seul kanji (方 : ほう/かた, 何 : なに/なん) : on garde le
+     * choix de Kuromoji, qui dépend du contexte, sauf lecture inconnue de JMdict.
+     */
+    private suspend fun checkReadings(analysis: Analysis): Map<Int, String> = withContext(Dispatchers.IO) {
+        val dict = dictionary.await()
+        buildMap {
+            analysis.words.forEachIndexed { i, w ->
+                val kanji = w.surface.count(Kana::isKanji)
+                if (kanji == 0 || w.kind in setOf(WordKind.VERB, WordKind.I_ADJECTIVE, WordKind.COPULA)) return@forEachIndexed
+                val entries = dict.lookup(w.surface)
+                val top = entries.firstOrNull() ?: return@forEachIndexed
+                val usual = (top.commonKana.ifEmpty { top.kana }).map(Kana::toHiragana)
+                val allKnown = entries.flatMap { it.kana }.map(Kana::toHiragana)
+                val wrong = when {
+                    w.reading == null -> true
+                    kanji >= 2 && top.common -> w.reading !in usual
+                    else -> w.reading !in allKnown
+                }
+                if (wrong) usual.firstOrNull()?.let { put(i, it) }
+            }
+        }
     }
 
     /** Point de grammaire touché : mis en évidence dans la phrase (re-toucher l'enlève). */

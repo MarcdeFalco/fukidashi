@@ -103,7 +103,7 @@ fun StudySheet(
                         Loading("Analyse…")
                     } else {
                         val highlight = analysis.grammar.filter { it.point == selection.grammar }.map { it.first..it.last }
-                        Sentence(analysis, selection.word, highlight, furigana, onWord)
+                        Sentence(analysis, selection.readings, selection.word, highlight, furigana, onWord)
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                         FilterChip(selected = furigana, onClick = { furigana = !furigana }, label = { Text("Furigana") })
@@ -119,7 +119,7 @@ fun StudySheet(
                         Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
                             Spacer(Modifier.height(12.dp))
                             when (tab) {
-                                0 -> WordTab(analysis, selection.word, selection.wordInfo, tagLabel)
+                                0 -> WordTab(analysis, selection.word, selection.wordInfo, selection.readings, tagLabel)
                                 else -> GrammarTab(analysis, selection.grammar, onGrammar)
                             }
                             Spacer(Modifier.height(24.dp))
@@ -144,7 +144,14 @@ private fun Loading(label: String) {
 /** La phrase, mot par mot, avec furigana ; chaque mot se touche. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Sentence(analysis: Analysis, selected: Int?, highlight: List<IntRange>, furigana: Boolean, onWord: (Int) -> Unit) {
+private fun Sentence(
+    analysis: Analysis,
+    readings: Map<Int, String>,
+    selected: Int?,
+    highlight: List<IntRange>,
+    furigana: Boolean,
+    onWord: (Int) -> Unit,
+) {
     FlowRow(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         analysis.words.forEachIndexed { i, word ->
             val inGrammar = highlight.any { word.lastToken >= it.first && word.firstToken <= it.last }
@@ -160,7 +167,8 @@ private fun Sentence(analysis: Analysis, selected: Int?, highlight: List<IntRang
                     .then(if (word.isClickable) Modifier.clickable { onWord(i) } else Modifier)
                     .padding(horizontal = 2.dp),
             ) {
-                RubyText(word.furigana, kindColor(word.kind), furigana, 26.sp)
+                val parts = readings[i]?.let { Furigana.align(word.surface, it) } ?: word.furigana
+                RubyText(parts, kindColor(word.kind), furigana, 26.sp)
             }
         }
     }
@@ -191,7 +199,7 @@ private fun RubyText(parts: List<Ruby>, color: Color, showReading: Boolean, size
 // ---------------- Onglet « Mot » ----------------
 
 @Composable
-private fun WordTab(analysis: Analysis, index: Int?, info: WordInfo?, tagLabel: (String) -> String) {
+private fun WordTab(analysis: Analysis, index: Int?, info: WordInfo?, readings: Map<Int, String>, tagLabel: (String) -> String) {
     if (index == null) {
         Text(
             "Touchez un mot de la phrase pour voir sa lecture, sa forme de dictionnaire, sa conjugaison, " +
@@ -203,7 +211,7 @@ private fun WordTab(analysis: Analysis, index: Int?, info: WordInfo?, tagLabel: 
         return
     }
     val word = analysis.words[index]
-    WordHeader(word, info)
+    WordHeader(word, info, readings[index])
     Inflection(word)
     when {
         info == null -> Loading("Recherche dans le dictionnaire…")
@@ -214,10 +222,12 @@ private fun WordTab(analysis: Analysis, index: Int?, info: WordInfo?, tagLabel: 
 }
 
 @Composable
-private fun WordHeader(word: Word, info: WordInfo?) {
+private fun WordHeader(word: Word, info: WordInfo?, corrected: String?) {
     val entry = info?.results?.firstOrNull()?.entries?.firstOrNull()
-    // Lecture : celle de Kuromoji, sinon celle du dictionnaire (noms propres inconnus…)
-    val parts = if (word.reading == null && entry != null && Kana.hasKanji(word.surface)) {
+    // Lecture : corrigée par JMdict, sinon celle de Kuromoji, sinon celle du dictionnaire
+    val parts = if (corrected != null) {
+        Furigana.align(word.surface, corrected)
+    } else if (word.reading == null && entry != null && Kana.hasKanji(word.surface)) {
         Furigana.align(word.surface, entry.kana.firstOrNull())
     } else {
         word.furigana
