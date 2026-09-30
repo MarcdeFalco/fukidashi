@@ -12,7 +12,8 @@ test_ocr_debug.jpg
 # Android
 android/.gradle/
 android/build/
-android/app/build/
+android/*/build/
+android/.kotlin/
 android/local.properties
 android/.idea/
 *.iml
