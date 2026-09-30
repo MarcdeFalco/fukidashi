@@ -84,6 +84,6 @@ fun AboutScreen(version: String, onClose: () -> Unit) {
     }
 }
 
-// À remplacer par l'adresse réelle du dépôt une fois publié
-const val SOURCE_URL = "https://github.com/OWNER/fukidashi"
-const val PRIVACY_URL = "https://OWNER.github.io/fukidashi/privacy.html"
+// Dépôt public et politique de confidentialité (GitHub Pages, dossier docs/)
+const val SOURCE_URL = "https://github.com/MarcdeFalco/fukidashi"
+const val PRIVACY_URL = "https://marcdefalco.github.io/fukidashi/privacy.html"

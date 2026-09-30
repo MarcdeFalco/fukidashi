@@ -39,8 +39,11 @@ Logiciel libre (licence AGPL-3.0). Dictionnaires JMdict et KANJIDIC2 de l'EDRDG 
   désinstaller l'appli efface tout
 
 ## Politique de confidentialité
-`docs/privacy.html` → à publier (GitHub Pages) et renseigner son adresse dans la console
-et dans `PRIVACY_URL` (AboutScreen.kt).
+https://marcdefalco.github.io/fukidashi/privacy.html (fichier `docs/privacy.html`,
+servi par GitHub Pages : Settings → Pages → branche `main`, dossier `/docs`).
+
+## Développeur
+- **Nom affiché** : Atelier Hanko
 
 ## Éléments graphiques à fournir
 - Icône 512×512 PNG : `docs/store/icon-512.png`
