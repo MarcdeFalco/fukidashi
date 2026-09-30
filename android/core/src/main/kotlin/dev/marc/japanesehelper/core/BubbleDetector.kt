@@ -28,7 +28,14 @@ class BubbleDetector(
 ) : Closeable {
     private val session = env.createSession(modelFile.path, options)
 
+    /** Durées du dernier appel à [detect]. */
+    var lastTimings = Timings()
+        private set
+
     fun detect(image: RgbImage): List<Detection> {
+        val t = Timings()
+        lastTimings = t
+        val prepStart = System.nanoTime()
         val scale = SIZE.toFloat() / max(image.width, image.height)
         val nw = (image.width * scale).roundToInt().coerceIn(1, SIZE)
         val nh = (image.height * scale).roundToInt().coerceIn(1, SIZE)
@@ -44,8 +51,9 @@ class BubbleDetector(
             }
         }
 
-        val raw = OnnxTensor.createTensor(env, FloatBuffer.wrap(input), longArrayOf(1, 3, SIZE.toLong(), SIZE.toLong())).use { t ->
-            session.run(mapOf(session.inputNames.first() to t)).use { result ->
+        t.ms["prétraitement"] = (System.nanoTime() - prepStart) / 1e6
+        val raw = OnnxTensor.createTensor(env, FloatBuffer.wrap(input), longArrayOf(1, 3, SIZE.toLong(), SIZE.toLong())).use { tensor ->
+            t.measure("modèle") { session.run(mapOf(session.inputNames.first() to tensor)) }.use { result ->
                 val buf = (result[0] as OnnxTensor).floatBuffer
                 FloatArray(buf.remaining()).also { buf.get(it) }
             }
@@ -71,7 +79,7 @@ class BubbleDetector(
             )
             candidates += Detection(box, score, TextKind.entries[best])
         }
-        return nms(candidates).sortedByDescending { it.score }
+        return t.measure("nms") { nms(candidates).sortedByDescending { it.score } }
     }
 
     /** NMS par classe, comme ultralytics par défaut. */

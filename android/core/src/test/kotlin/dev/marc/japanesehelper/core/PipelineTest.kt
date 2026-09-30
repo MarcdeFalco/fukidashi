@@ -39,7 +39,7 @@ class PipelineTest {
         // Seul écart connu du modèle int8, identique en Python (validate_ocr.py)
         val int8Exceptions = mapOf("01.jpg" to "立川で見た、穴への下の巨大な眼は．．．")
 
-        MangaOcr(File(modelsDir, "manga_ocr_int8")).use { ocr ->
+        MangaOcr(File(modelsDir, "manga_ocr_cached_int8")).use { ocr ->
             for (i in 0 until expected.length()) {
                 val item = expected.getJSONObject(i)
                 val name = item.getString("filename")
@@ -56,7 +56,7 @@ class PipelineTest {
         // test_ocr.jpg a l'orientation EXIF 6 : rotation de 90° à appliquer
         val page = load(File(repoDir, "test_ocr.jpg"), rotate90 = true)
         BubbleDetector(File(modelsDir, "bubble_detector_int8.onnx")).use { detector ->
-            MangaOcr(File(modelsDir, "manga_ocr_int8")).use { ocr ->
+            MangaOcr(File(modelsDir, "manga_ocr_cached_int8")).use { ocr ->
                 val dets: List<Detection>
                 val ms = measureTimeMillis { dets = detector.detect(page) }
                 println("Détection : ${dets.size} zones en $ms ms")

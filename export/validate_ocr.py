@@ -99,6 +99,53 @@ def beam_decode(enc, dec, pixel_values, num_beams=4, length_penalty=2.0) -> list
     return max(finished)[1][1:]
 
 
+def beam_decode_cached(enc_kv, step, pixel_values, num_beams=4, length_penalty=2.0) -> list[int]:
+    """Même recherche en faisceau, avec les graphes de export_cached.py.
+
+    L'encodeur donne les K/V de l'attention croisée ; le décodeur avance d'un token
+    par faisceau et renvoie son cache, qu'on réordonne selon les faisceaux gardés.
+    """
+    cross = enc_kv.run(None, {"pixel_values": pixel_values})
+    cross_feed = dict(zip(["cross_k0", "cross_v0", "cross_k1", "cross_v1"], cross))
+    past = [np.zeros((1, 12, 0, 64), dtype=np.float32)] * 4
+    beams = [([START], 0.0)]
+    finished = []
+    for pos in range(MAX_LEN - 1):
+        feed = {
+            "input_ids": np.array([[b[0][-1]] for b in beams], dtype=np.int64),
+            "position": np.array([pos], dtype=np.int64),
+            **dict(zip(["past_k0", "past_v0", "past_k1", "past_v1"], past)),
+            **cross_feed,
+        }
+        logits, *cache = step.run(None, feed)
+        logp = log_softmax(logits)
+        for i, (toks, _) in enumerate(beams):
+            for t in banned_tokens(toks):
+                logp[i, t] = -np.inf
+        total = logp + np.array([b[1] for b in beams])[:, None]
+        flat = np.argsort(total, axis=None)[::-1][: 2 * num_beams]
+        new_beams, parents = [], []
+        for rank, idx in enumerate(flat):
+            bi, tok = divmod(int(idx), total.shape[1])
+            score = float(total[bi, tok])
+            if tok == EOS:
+                if rank < num_beams:
+                    toks = beams[bi][0]
+                    finished.append((score / (len(toks) ** length_penalty), toks))
+            else:
+                new_beams.append((beams[bi][0] + [tok], score))
+                parents.append(bi)
+            if len(new_beams) == num_beams:
+                break
+        beams = new_beams
+        past = [c[parents] for c in cache]  # réordonne le cache selon les faisceaux gardés
+        if len(finished) >= num_beams:
+            break
+    if not finished:
+        finished = [(s / (len(t) ** length_penalty), t) for t, s in beams]
+    return max(finished)[1][1:]
+
+
 def detokenize(ids: list[int], vocab: list[str]) -> str:
     # 0..14 = [PAD] [UNK] [CLS] [SEP] [MASK] <unused0..9> : ignorés comme skip_special_tokens
     return "".join(vocab[i] for i in ids if i >= 15)
@@ -113,15 +160,22 @@ def post_process(text: str) -> str:
 
 def main():
     vocab = (MODEL_DIR / "vocab.txt").read_text(encoding="utf-8").splitlines()
-    enc = ort.InferenceSession(str(next(MODEL_DIR.glob("encoder_model*.onnx"))))
-    dec = ort.InferenceSession(str(next(MODEL_DIR.glob("decoder_model*.onnx"))))
+    cached = (MODEL_DIR / "decoder_step.onnx").exists()
+    if cached:  # graphes de export_cached.py
+        enc = ort.InferenceSession(str(MODEL_DIR / "encoder_kv.onnx"))
+        dec = ort.InferenceSession(str(MODEL_DIR / "decoder_step.onnx"))
+        decode = beam_decode_cached
+    else:  # export optimum
+        enc = ort.InferenceSession(str(next(MODEL_DIR.glob("encoder_model*.onnx"))))
+        dec = ort.InferenceSession(str(next(MODEL_DIR.glob("decoder_model*.onnx"))))
+        decode = beam_decode
     expected = json.loads((TEST_DIR / "expected_results.json").read_text(encoding="utf-8"))
 
     ok = 0
     t0 = time.time()
     for item in expected:
         img = Image.open(TEST_DIR / "images" / item["filename"])
-        text = post_process(detokenize(beam_decode(enc, dec, preprocess(img)), vocab))
+        text = post_process(detokenize(decode(enc, dec, preprocess(img)), vocab))
         match = text == item["result"]
         ok += match
         print(f"{'✅' if match else '❌'} {item['filename']}: {text}" + ("" if match else f"\n   attendu : {item['result']}"))

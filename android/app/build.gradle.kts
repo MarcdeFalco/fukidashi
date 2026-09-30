@@ -36,32 +36,44 @@ android {
     // Les modèles sont copiés tels quels dans filesDir au premier lancement
     androidResources { noCompress += listOf("onnx", "txt") }
 
+    // Les bibliothèques du NPU doivent exister en fichiers sur le disque
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            // NPU : seul le HTP V79 (Snapdragon 8 Elite) ; ni GPU, ni DSP, ni autres générations
+            excludes += listOf(
+                "**/libQnnGpu.so", "**/libQnnDsp*.so",
+                "**/libQnnHtpV68*.so", "**/libQnnHtpV69*.so", "**/libQnnHtpV73*.so",
+                "**/libQnnHtpV75*.so", "**/libQnnHtpV81*.so",
+            )
+        }
+    }
+
     sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/models"))
 }
 
-// Modèles produits par export/export_models.py (non versionnés)
-val copyModels by tasks.registering(Copy::class) {
-    val out = rootProject.file("../export/out")
+// Modèles produits par export/export_models.py (non versionnés) :
+// détecteur et encodeur en fp16 (NPU), décodeur en int8 (CPU)
+val copyModels by tasks.registering(Sync::class) {
+    val out = rootProject.file("../export/out/npu_fp16")
     from(out) {
-        include("bubble_detector_int8.onnx")
-        rename { "bubble_detector.onnx" }
+        include("bubble_detector.onnx")
     }
-    from(File(out, "manga_ocr_int8")) {
-        include("encoder_model.onnx", "decoder_model.onnx", "vocab.txt")
+    from(out) {
+        include("encoder_kv.onnx", "decoder_step.onnx", "vocab.txt")
         into("manga_ocr")
     }
     into(layout.buildDirectory.dir("generated/models/models"))
     doFirst {
-        check(File(out, "bubble_detector_int8.onnx").exists()) {
-            "Modèles absents : lancer d'abord export/export_models.py"
-        }
+        check(File(out, "encoder_kv.onnx").exists()) { "Modèles absents : lancer d'abord export/export_models.py" }
     }
 }
 tasks.named("preBuild") { dependsOn(copyModels) }
 
 dependencies {
     implementation(project(":core"))
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.30.0")
+    // Variante avec le support du NPU Qualcomm (QNN)
+    implementation("com.microsoft.onnxruntime:onnxruntime-android-qnn:1.29.0")
 
     implementation(platform("androidx.compose:compose-bom:2025.08.00"))
     implementation("androidx.compose.ui:ui")

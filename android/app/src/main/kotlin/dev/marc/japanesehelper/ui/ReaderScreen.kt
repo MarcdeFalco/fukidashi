@@ -77,6 +77,7 @@ fun ReaderScreen(vm: ReaderViewModel, source: PageSource) {
     val detections by vm.detections.collectAsStateWithLifecycle()
     val selection by vm.selection.collectAsStateWithLifecycle()
     val modelsReady by vm.modelsReady.collectAsStateWithLifecycle()
+    val loadingStatus by vm.loadingStatus.collectAsStateWithLifecycle()
     var zoomed by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -101,7 +102,7 @@ fun ReaderScreen(vm: ReaderViewModel, source: PageSource) {
         }
 
         val status = when {
-            !modelsReady -> "Préparation des modèles…"
+            !modelsReady -> loadingStatus
             detections[pager.currentPage] == null -> "Détection des bulles…"
             else -> "${detections[pager.currentPage]!!.size} zones"
         }

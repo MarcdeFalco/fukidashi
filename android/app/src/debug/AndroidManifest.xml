@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Test de vitesse, lancé par adb (android/bench.sh) -->
+        <activity
+            android:name=".BenchmarkActivity"
+            android:exported="true" />
+    </application>
+</manifest>

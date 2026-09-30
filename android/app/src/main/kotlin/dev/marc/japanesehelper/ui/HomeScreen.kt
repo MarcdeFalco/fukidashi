@@ -26,6 +26,7 @@ import dev.marc.japanesehelper.ReaderViewModel
 @Composable
 fun HomeScreen(vm: ReaderViewModel) {
     val modelsReady by vm.modelsReady.collectAsStateWithLifecycle()
+    val loadingStatus by vm.loadingStatus.collectAsStateWithLifecycle()
     val pickImages = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { vm.open(it) }
     val pickCbz = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { vm.open(listOf(it)) }
@@ -53,7 +54,7 @@ fun HomeScreen(vm: ReaderViewModel) {
             }
             Spacer(Modifier.height(24.dp))
             Text(
-                if (modelsReady) "Modèles prêts" else "Préparation des modèles…",
+                if (modelsReady) "Modèles prêts" else loadingStatus,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

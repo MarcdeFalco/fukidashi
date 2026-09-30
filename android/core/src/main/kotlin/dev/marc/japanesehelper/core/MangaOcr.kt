@@ -12,23 +12,49 @@ import kotlin.math.ln
 import kotlin.math.pow
 
 /**
- * manga-ocr (ViT + BERT) en ONNX. Reproduit export/validate_ocr.py :
- * gris -> 224x224 bilinéaire PIL -> [-1, 1] -> encodeur -> recherche en faisceau.
+ * manga-ocr (ViT + BERT) en ONNX, graphes de export/export_cached.py.
+ * Reproduit `beam_decode_cached` de export/validate_ocr.py :
+ * gris -> 224x224 bilinéaire PIL -> [-1, 1] -> encoder_kv (K/V de l'attention croisée)
+ * -> recherche en faisceau, un token par pas avec cache K/V de l'auto-attention.
  *
  * Non thread-safe : un appel à la fois.
  */
 class MangaOcr(
-    modelDir: File,
+    encoderFile: File,
+    decoderFile: File,
+    vocabFile: File,
     private val env: OrtEnvironment = OrtEnvironment.getEnvironment(),
-    options: OrtSession.SessionOptions = OrtSession.SessionOptions(),
+    encoderOptions: OrtSession.SessionOptions = OrtSession.SessionOptions(),
+    decoderOptions: OrtSession.SessionOptions = encoderOptions,
 ) : Closeable {
-    private val encoder = env.createSession(File(modelDir, "encoder_model.onnx").path, options)
-    private val decoder = env.createSession(File(modelDir, "decoder_model.onnx").path, options)
-    private val vocab = File(modelDir, "vocab.txt").readLines(Charsets.UTF_8)
+    constructor(
+        modelDir: File,
+        env: OrtEnvironment = OrtEnvironment.getEnvironment(),
+        options: OrtSession.SessionOptions = OrtSession.SessionOptions(),
+    ) : this(
+        File(modelDir, ENCODER_FILE), File(modelDir, DECODER_FILE), File(modelDir, "vocab.txt"),
+        env, options, options,
+    )
+
+    private val encoder = env.createSession(encoderFile.path, encoderOptions)
+    private val decoder = env.createSession(decoderFile.path, decoderOptions)
+    private val vocab = vocabFile.readLines(Charsets.UTF_8)
+
+    /** Durées du dernier appel à [recognize]. */
+    var lastTimings = Timings()
+        private set
 
     fun recognize(image: RgbImage): String {
-        val hidden = encode(preprocess(image))
-        val ids = beamSearch(hidden)
+        val t = Timings()
+        lastTimings = t
+        val pixels = t.measure("prétraitement") { preprocess(image) }
+        val ids = OnnxTensor.createTensor(env, FloatBuffer.wrap(pixels), longArrayOf(1, 3, SIZE.toLong(), SIZE.toLong())).use { input ->
+            t.measure("encodeur") { encoder.run(mapOf(encoder.inputNames.first() to input)) }.use { cross ->
+                // K/V de l'attention croisée, partagés par tous les faisceaux
+                val crossFeed = CROSS_NAMES.associateWith { cross.get(it).get() as OnnxTensor }
+                beamSearch(crossFeed)
+            }
+        }
         return TextPostProcess.apply(detokenize(ids))
     }
 
@@ -45,54 +71,65 @@ class MangaOcr(
         return out
     }
 
-    /** Sortie de l'encodeur : [197 * 768]. */
-    private fun encode(pixels: FloatArray): FloatArray {
-        OnnxTensor.createTensor(env, FloatBuffer.wrap(pixels), longArrayOf(1, 3, SIZE.toLong(), SIZE.toLong())).use { input ->
-            encoder.run(mapOf("pixel_values" to input)).use { result ->
-                val buf = (result[0] as OnnxTensor).floatBuffer
-                return FloatArray(buf.remaining()).also { buf.get(it) }
-            }
+    /** Cache K/V de l'auto-attention : 4 tableaux [faisceaux, 12, longueur, 64]. */
+    private class Cache(val beams: Int, val length: Int, val arrays: List<FloatArray>) {
+        val beamSize get() = HEADS * length * HEAD_DIM
+
+        /** Garde, dans l'ordre, les faisceaux [parents]. */
+        fun select(parents: IntArray) = Cache(
+            parents.size, length,
+            arrays.map { a -> FloatArray(parents.size * beamSize).also { out -> parents.forEachIndexed { j, p -> a.copyInto(out, j * beamSize, p * beamSize, (p + 1) * beamSize) } } },
+        )
+
+        companion object {
+            fun empty() = Cache(1, 0, List(4) { FloatArray(0) })
         }
     }
 
-    /** log-softmax de la dernière position pour chaque faisceau : [nbFaisceaux][vocab]. */
-    private fun decodeStep(beams: List<IntArray>, hidden: FloatArray): Array<FloatArray> {
-        val b = beams.size
-        val len = beams[0].size
-        val ids = LongArray(b * len) { beams[it / len][it % len].toLong() }
-        val hiddenBatch = FloatArray(b * hidden.size).also { for (i in 0 until b) hidden.copyInto(it, i * hidden.size) }
-        val encLen = (hidden.size / HIDDEN).toLong()
-        OnnxTensor.createTensor(env, LongBuffer.wrap(ids), longArrayOf(b.toLong(), len.toLong())).use { idsT ->
-            OnnxTensor.createTensor(env, FloatBuffer.wrap(hiddenBatch), longArrayOf(b.toLong(), encLen, HIDDEN.toLong())).use { hT ->
-                decoder.run(mapOf("input_ids" to idsT, "encoder_hidden_states" to hT)).use { result ->
-                    val logits = (result[0] as OnnxTensor).floatBuffer
-                    val v = vocab.size
-                    return Array(b) { i ->
-                        val row = FloatArray(v)
-                        logits.position((i * len + len - 1) * v)
-                        logits.get(row)
-                        logSoftmax(row)
-                    }
-                }
+    private class Step(val logProbs: Array<FloatArray>, val cache: Cache)
+
+    /** Un pas du décodeur : dernier token de chaque faisceau -> log-probas + cache prolongé. */
+    private fun decodeStep(lastTokens: IntArray, position: Int, cache: Cache, cross: Map<String, OnnxTensor>): Step {
+        val b = lastTokens.size.toLong()
+        val pastShape = longArrayOf(b, HEADS.toLong(), cache.length.toLong(), HEAD_DIM.toLong())
+        val inputs = mutableMapOf<String, OnnxTensor>()
+        try {
+            inputs["input_ids"] = OnnxTensor.createTensor(env, LongBuffer.wrap(LongArray(lastTokens.size) { lastTokens[it].toLong() }), longArrayOf(b, 1))
+            inputs["position"] = OnnxTensor.createTensor(env, LongBuffer.wrap(longArrayOf(position.toLong())), longArrayOf(1))
+            PAST_NAMES.forEachIndexed { i, name -> inputs[name] = OnnxTensor.createTensor(env, FloatBuffer.wrap(cache.arrays[i]), pastShape) }
+            lastTimings.count("étapes")
+            return lastTimings.measure("décodeur") { decoder.run(inputs + cross) }.use { result ->
+                val logits = (result.get("logits").get() as OnnxTensor).floatBuffer
+                val v = vocab.size
+                val logProbs = Array(lastTokens.size) { i -> FloatArray(v).also { logits.position(i * v); logits.get(it); logSoftmax(it) } }
+                val newCache = Cache(
+                    lastTokens.size, cache.length + 1,
+                    NEW_NAMES.map { name -> (result.get(name).get() as OnnxTensor).floatBuffer.let { buf -> FloatArray(buf.remaining()).also { buf.get(it) } } },
+                )
+                Step(logProbs, newCache)
             }
+        } finally {
+            inputs.values.forEach { it.close() }
         }
     }
 
     private class Beam(val tokens: IntArray, val score: Float)
 
     /** Recherche en faisceau façon HF generate (num_beams=4, length_penalty=2, early_stopping). */
-    internal fun beamSearch(hidden: FloatArray): IntArray {
+    private fun beamSearch(cross: Map<String, OnnxTensor>): IntArray {
         var beams = listOf(Beam(intArrayOf(START), 0f))
+        var cache = Cache.empty()
         val finished = mutableListOf<Pair<Double, IntArray>>()
-        repeat(MAX_LEN - 1) {
-            val logp = decodeStep(beams.map { it.tokens }, hidden)
+        for (position in 0 until MAX_LEN - 1) {
+            val step = decodeStep(IntArray(beams.size) { beams[it].tokens.last() }, position, cache, cross)
+            val logp = step.logProbs
             for ((i, beam) in beams.withIndex()) {
                 for (t in bannedTokens(beam.tokens)) logp[i][t] = Float.NEGATIVE_INFINITY
                 for (t in logp[i].indices) logp[i][t] += beam.score
             }
-            val candidates = topK(logp, 2 * NUM_BEAMS)
             val next = mutableListOf<Beam>()
-            for ((rank, cand) in candidates.withIndex()) {
+            val parents = mutableListOf<Int>()
+            for ((rank, cand) in topK(logp, 2 * NUM_BEAMS).withIndex()) {
                 val (bi, tok) = cand
                 val score = logp[bi][tok]
                 val toks = beams[bi].tokens
@@ -101,10 +138,12 @@ class MangaOcr(
                     if (rank < NUM_BEAMS) finished += score / toks.size.toDouble().pow(LENGTH_PENALTY) to toks
                 } else {
                     next += Beam(toks + tok, score)
+                    parents += bi
                 }
                 if (next.size == NUM_BEAMS) break
             }
             beams = next
+            cache = step.cache.select(parents.toIntArray())
             if (finished.size >= NUM_BEAMS) return best(finished)
         }
         if (finished.isEmpty()) {
@@ -164,13 +203,19 @@ class MangaOcr(
 
     companion object {
         const val SIZE = 224
-        private const val HIDDEN = 768
+        const val ENCODER_FILE = "encoder_kv.onnx"
+        const val DECODER_FILE = "decoder_step.onnx"
+        private const val HEADS = 12
+        private const val HEAD_DIM = 64
         private const val START = 2
         private const val EOS = 3
         private const val MAX_LEN = 300
         private const val NUM_BEAMS = 4
         private const val LENGTH_PENALTY = 2.0
         private const val NO_REPEAT_NGRAM = 3
+        private val CROSS_NAMES = listOf("cross_k0", "cross_v0", "cross_k1", "cross_v1")
+        private val PAST_NAMES = listOf("past_k0", "past_v0", "past_k1", "past_v1")
+        private val NEW_NAMES = listOf("new_k0", "new_v0", "new_k1", "new_v1")
 
         private fun logSoftmax(x: FloatArray): FloatArray {
             val max = x.max()

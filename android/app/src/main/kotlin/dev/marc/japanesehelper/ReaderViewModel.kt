@@ -32,6 +32,10 @@ class ReaderViewModel(app: Application) : AndroidViewModel(app) {
     private val _modelsReady = MutableStateFlow(false)
     val modelsReady: StateFlow<Boolean> = _modelsReady.asStateFlow()
 
+    /** Étape de chargement en cours, affichée tant que les modèles ne sont pas prêts. */
+    private val _loadingStatus = MutableStateFlow("Préparation des modèles…")
+    val loadingStatus: StateFlow<String> = _loadingStatus.asStateFlow()
+
     /** Zones détectées par page (absente = pas encore analysée). */
     private val _detections = MutableStateFlow<Map<Int, List<Detection>>>(emptyMap())
     val detections: StateFlow<Map<Int, List<Detection>>> = _detections.asStateFlow()
@@ -48,7 +52,7 @@ class ReaderViewModel(app: Application) : AndroidViewModel(app) {
     init {
         // Chargement anticipé : la copie et l'initialisation prennent quelques secondes
         viewModelScope.launch {
-            runCatching { engine.load() }
+            runCatching { engine.load { _loadingStatus.value = it } }
                 .onSuccess { _modelsReady.value = true }
                 .onFailure { report("Chargement des modèles impossible", it) }
         }
