@@ -1,4 +1,6 @@
-# 吹き出し Fukidashi
+<p align="center"><img src="docs/store/icon-512.png" width="128" alt="Icône de Fukidashi"></p>
+
+<h1 align="center">吹き出し Fukidashi</h1>
 
 Application Android pour lire le japonais — mangas, livres — bulle par bulle, **hors ligne**.
 
