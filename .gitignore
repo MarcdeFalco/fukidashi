@@ -22,3 +22,5 @@ export/data/
 android/keystore.properties
 android/*.jks
 android/models/src/
+# Photo de test (page de manga commercial) : locale uniquement, jamais publiée
+test_ocr.jpg

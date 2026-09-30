@@ -35,6 +35,8 @@ class PipelineTest {
 
     @Test
     fun ocrMatchesPythonReference() {
+        // Images de test du dépôt manga-ocr (https://github.com/kha-white/manga-ocr), cloné à côté
+        if (!mangaOcrTests.exists()) return println("Ignoré : ${mangaOcrTests} absent")
         val expected = JSONArray(File(mangaOcrTests, "expected_results.json").readText())
         // Seul écart connu du modèle int8, identique en Python (validate_ocr.py)
         val int8Exceptions = mapOf("01.jpg" to "立川で見た、穴への下の巨大な眼は．．．")
@@ -53,8 +55,10 @@ class PipelineTest {
 
     @Test
     fun detectorFindsBubblesOnPhoto() {
-        // test_ocr.jpg a l'orientation EXIF 6 : rotation de 90° à appliquer
-        val page = load(File(repoDir, "test_ocr.jpg"), rotate90 = true)
+        // test_ocr.jpg (photo d'une page de manga, non publiée) a l'orientation EXIF 6 : rotation de 90°
+        val photo = File(repoDir, "test_ocr.jpg")
+        if (!photo.exists()) return println("Ignoré : ${photo} absent")
+        val page = load(photo, rotate90 = true)
         BubbleDetector(File(modelsDir, "bubble_detector_int8.onnx")).use { detector ->
             MangaOcr(File(modelsDir, "manga_ocr_cached_int8")).use { ocr ->
                 val dets: List<Detection>
