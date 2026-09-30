@@ -10,6 +10,21 @@ kanji) et les points de grammaire expliqués en français.
 Tout tourne sur le téléphone : sur le NPU des puces Snapdragon (ONNX Runtime + Qualcomm QNN),
 sinon sur le processeur.
 
+<p align="center">
+  <img src="docs/store/screenshot-1.png" width="23%" alt="Lecteur : bulles détectées">
+  <img src="docs/store/screenshot-2.png" width="23%" alt="Phrase avec furigana, mots colorés par nature">
+  <img src="docs/store/screenshot-3.png" width="23%" alt="Fiche d'un mot : conjugaison et définitions">
+  <img src="docs/store/screenshot-4.png" width="23%" alt="Points de grammaire surlignés dans la phrase">
+</p>
+
+<p align="center"><sub>Pages d'exemple : « ブラックジャックによろしく », 佐藤秀峰 (œuvre en libre réutilisation,
+<a href="https://densho810.com/free/">conditions</a>).</sub></p>
+
+| Sur un Galaxy S25 Ultra | NPU Snapdragon | Processeur seul |
+|---|---|---|
+| Détection des bulles d'une page | 60 ms | 1,2 s |
+| Lecture d'une bulle | 50 ms | 360 ms |
+
 ## Organisation
 
 | Dossier | Contenu |
@@ -18,7 +33,7 @@ sinon sur le processeur.
 | `android/core/` | Traitements en Kotlin pur (détection, OCR, analyse du japonais, grammaire), testés sur JVM |
 | `android/app/` | Application (Jetpack Compose, CameraX) |
 | `android/models/` | Pack de ressources Play (modèles + dictionnaire) |
-| `docs/` | Politique de confidentialité, fiche Play Store |
+| `docs/` | Politique de confidentialité, fiche et visuels Play Store |
 
 ## Construire
 
