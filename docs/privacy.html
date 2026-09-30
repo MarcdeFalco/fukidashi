@@ -1,18 +1,53 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fukidashi – Politique de confidentialité</title>
+<title>Fukidashi – Privacy policy / Politique de confidentialité</title>
 <style>
-  :root { --bg: #ffffff; --fg: #1e2a4a; --muted: #5b6477; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #11151f; --fg: #e8ebf2; --muted: #a3abbd; } }
+  :root { --bg: #ffffff; --fg: #1e2a4a; --muted: #5b6477; --rule: #d9dde6; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #11151f; --fg: #e8ebf2; --muted: #a3abbd; --rule: #2a3142; } }
   body { background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, sans-serif; max-width: 42rem; margin: 0 auto; padding: 2rem 1rem; }
   h1 { font-size: 1.6rem; } h2 { font-size: 1.15rem; margin-top: 2rem; }
-  p.meta { color: var(--muted); }
+  p.meta, nav { color: var(--muted); }
+  a { color: inherit; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 3rem 0; }
 </style>
 </head>
 <body>
+<nav><a href="#en">English</a> · <a href="#fr">Français</a></nav>
+
+<section id="en">
+<h1>Fukidashi – Privacy policy</h1>
+<p class="meta">Last updated: September 30, 2026</p>
+
+<p>Fukidashi helps you read Japanese (manga, books): bubble detection, text recognition,
+dictionary and grammar. <strong>All processing happens on your phone.</strong></p>
+
+<h2>Data collected</h2>
+<p>None. The app sends no image, no text, no identifier and no usage statistics, to us or to any
+third party. It contains no ads, no analytics and no user account.</p>
+
+<h2>Camera</h2>
+<p>The camera permission is only used to photograph a page when you ask for it. Photos are stored
+in the app's private storage on the phone and deleted when the next photo session starts. They are
+never transmitted.</p>
+
+<h2>Images and files you open</h2>
+<p>The images and CBZ archives you open are read on the phone, for as long as you read them. The app
+only accesses them when you pick them or share them with it.</p>
+
+<h2>Internet access</h2>
+<p>The app does not use the Internet. Only the links on the “About” screen open your browser, if you
+tap them.</p>
+
+<h2>Contact</h2>
+<p>For any question, open an issue on the source code repository (link on the app's “About” screen).</p>
+</section>
+
+<hr>
+
+<section id="fr" lang="fr">
 <h1>Fukidashi – Politique de confidentialité</h1>
 <p class="meta">Dernière mise à jour : 30 septembre 2026</p>
 
@@ -40,5 +75,6 @@ navigateur si vous les touchez.</p>
 <h2>Contact</h2>
 <p>Pour toute question : ouvrez un ticket sur le dépôt du code source (lien dans l'écran « À propos »
 de l'application).</p>
+</section>
 </body>
 </html>

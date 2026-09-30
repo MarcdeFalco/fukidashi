@@ -1,0 +1,83 @@
+<p align="center"><img src="docs/store/icon-512.png" width="128" alt="Icône de Fukidashi"></p>
+
+<h1 align="center">吹き出し Fukidashi</h1>
+
+<p align="center"><a href="README.md">English</a> · <b>Français</b></p>
+
+Application Android pour lire le japonais — mangas, livres — bulle par bulle, **hors ligne**.
+
+Ouvrez une page (image, archive CBZ, capture partagée) ou photographiez un livre papier :
+les bulles sont détectées, et toucher une bulle ouvre un écran d'étude avec les furigana,
+les mots cliquables (lecture, forme du dictionnaire, conjugaison décomposée, définitions,
+kanji) et les points de grammaire de la phrase, expliqués en français ou en anglais.
+
+Tout tourne sur le téléphone : sur le NPU des puces Snapdragon (ONNX Runtime + Qualcomm QNN),
+sinon sur le processeur.
+
+<p align="center">
+  <img src="docs/store/fr/screenshot-1.png" width="23%" alt="Lecteur : bulles détectées">
+  <img src="docs/store/fr/screenshot-2.png" width="23%" alt="Phrase avec furigana, mots colorés par nature">
+  <img src="docs/store/fr/screenshot-3.png" width="23%" alt="Fiche d'un mot : conjugaison et définitions">
+  <img src="docs/store/fr/screenshot-4.png" width="23%" alt="Points de grammaire surlignés dans la phrase">
+</p>
+
+<p align="center"><sub>Page d'exemple : « ブラックジャックによろしく », 佐藤秀峰 (œuvre en libre réutilisation,
+<a href="https://densho810.com/free/">conditions</a>).</sub></p>
+
+| Sur un Galaxy S25 Ultra | NPU Snapdragon | Processeur seul |
+|---|---|---|
+| Détection des bulles d'une page | 60 ms | 1,2 s |
+| Lecture d'une bulle | 50 ms | 360 ms |
+
+## Langues
+
+L'application existe en **anglais** (par défaut) et en **français** ; sur Android 13 et plus, la
+langue se choisit appli par appli dans les réglages du système. Les explications de grammaire,
+les rôles des mots et les libellés du dictionnaire sont traduits ; les définitions viennent de
+JMdict (anglais, et français quand il existe).
+
+## Organisation
+
+| Dossier | Contenu |
+|---|---|
+| `export/` | Scripts Python : conversion des modèles en ONNX, versions de référence des traitements, construction du dictionnaire, visuels Play Store |
+| `android/core/` | Traitements en Kotlin pur (détection, OCR, analyse du japonais, grammaire), testés sur JVM |
+| `android/app/` | Application (Jetpack Compose, CameraX) |
+| `android/models/` | Pack de ressources Play (modèles + dictionnaire) |
+| `docs/` | Politique de confidentialité, fiche et visuels Play Store |
+
+## Construire
+
+Les modèles et le dictionnaire ne sont pas versionnés ; il faut les générer :
+
+```bash
+python3.12 -m venv .venv && .venv/bin/pip install -r export/requirements.txt
+# Détecteur de bulles YOLOv8 (comic-speech-bubble-detector.pt) à placer à la racine
+.venv/bin/python export/export_models.py
+# JMdict / KANJIDIC2 de jmdict-simplified dans export/data/ (voir build_dictionary.py)
+.venv/bin/python export/build_dictionary.py
+```
+
+Puis, avec le SDK Android :
+
+```bash
+cd android
+./gradlew :core:test          # tests du pipeline
+./gradlew :app:assembleDebug  # APK de développement (modèles inclus)
+./gradlew :app:bundleRelease  # AAB Play Store (modèles dans le pack :models)
+```
+
+`android/bench.sh` mesure les performances sur un téléphone branché.
+
+## Licences
+
+Code sous **GNU AGPL-3.0** (voir `LICENSE`), notamment parce que le détecteur de bulles est
+un modèle YOLOv8 (Ultralytics, AGPL-3.0).
+
+Composants et données tiers :
+- [manga-ocr](https://github.com/kha-white/manga-ocr) (Maciej Budyś) — Apache 2.0
+- [JMdict / KANJIDIC2](https://www.edrdg.org/edrdg/licence.html) (EDRDG), via
+  [jmdict-simplified](https://github.com/scriptin/jmdict-simplified) — CC BY-SA 4.0
+- [Kuromoji](https://github.com/atilika/kuromoji) + IPADIC — Apache 2.0 / licence IPADIC
+- [ONNX Runtime](https://onnxruntime.ai) — MIT ; Qualcomm AI Engine Direct (QNN) — licence Qualcomm
+- Jetpack Compose, CameraX — Apache 2.0

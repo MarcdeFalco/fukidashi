@@ -32,7 +32,7 @@ class OcrEngine(private val context: Context, private val forceCpu: Boolean = fa
         private set
 
     /** Charge les modèles ; [onStatus] reçoit les étapes longues (1re compilation NPU). */
-    suspend fun load(onStatus: (String) -> Unit = {}) = withContext(Dispatchers.IO) {
+    suspend fun load(onStatus: (Int) -> Unit = {}) = withContext(Dispatchers.IO) {
         mutex.withLock {
             if (detector != null) return@withLock
             val env = OrtEnvironment.getEnvironment()
@@ -53,13 +53,13 @@ class OcrEngine(private val context: Context, private val forceCpu: Boolean = fa
      * Prépare un modèle pour le NPU (compilation mise en cache), ou pour le CPU si le NPU
      * est indisponible. Renvoie de quoi ouvrir la session.
      */
-    private fun npuOrCpu(asset: String, onStatus: (String) -> Unit): Pair<() -> File, OrtSession.SessionOptions> {
+    private fun npuOrCpu(asset: String, onStatus: (Int) -> Unit): Pair<() -> File, OrtSession.SessionOptions> {
         val version = context.packageManager.getPackageInfo(context.packageName, 0).lastUpdateTime
         val key = asset.substringAfterLast('/').removeSuffix(".onnx") + "@$version"
         return try {
             if (forceCpu) error("CPU forcé")
             val model = Accelerators.npuModel(context, key, CPU_THREADS) {
-                onStatus("Optimisation pour le NPU (première fois, ~1 min)…")
+                onStatus(R.string.status_npu_compile)
                 copyAsset(asset)
             }
             if (!model.compiling) return Pair({ model.file }, model.options)

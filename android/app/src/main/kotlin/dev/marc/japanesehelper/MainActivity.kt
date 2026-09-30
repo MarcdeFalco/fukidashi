@@ -13,6 +13,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -62,7 +63,7 @@ class MainActivity : ComponentActivity() {
                 error?.let {
                     AlertDialog(
                         onDismissRequest = vm::dismissError,
-                        confirmButton = { TextButton(onClick = vm::dismissError) { Text("OK") } },
+                        confirmButton = { TextButton(onClick = vm::dismissError) { Text(stringResource(R.string.ok)) } },
                         text = { Text(it) },
                     )
                 }

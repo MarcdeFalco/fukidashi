@@ -57,6 +57,11 @@ import dev.marc.japanesehelper.WordInfo
 import dev.marc.japanesehelper.core.text.Analysis
 import dev.marc.japanesehelper.core.text.Furigana
 import dev.marc.japanesehelper.core.text.GrammarPoint
+import dev.marc.japanesehelper.core.text.Lang
+import dev.marc.japanesehelper.core.text.text
+import androidx.compose.ui.res.stringResource
+import dev.marc.japanesehelper.R
+import dev.marc.japanesehelper.contentLang
 import dev.marc.japanesehelper.core.text.Kana
 import dev.marc.japanesehelper.core.text.Ruby
 import dev.marc.japanesehelper.core.text.Word
@@ -83,9 +88,11 @@ fun StudySheet(
     selection: Selection,
     onWord: (Int) -> Unit,
     onGrammar: (GrammarPoint) -> Unit,
-    tagLabel: (String) -> String,
+    tagLabel: (String, Lang) -> String,
     onDismiss: () -> Unit,
 ) {
+    val lang = contentLang()
+    val label: (String) -> String = { tagLabel(it, lang) }
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     var furigana by rememberSaveable { mutableStateOf(true) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -94,33 +101,33 @@ fun StudySheet(
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).navigationBarsPadding()) {
             when (val text = selection.text) {
-                BubbleText.Reading -> Loading("Lecture de la bulle…")
-                is BubbleText.Failed -> Text("Erreur : ${text.message}", color = MaterialTheme.colorScheme.error)
+                BubbleText.Reading -> Loading(stringResource(R.string.study_reading))
+                is BubbleText.Failed -> Text(stringResource(R.string.study_error, text.message), color = MaterialTheme.colorScheme.error)
                 is BubbleText.Done -> {
                     val analysis = selection.analysis
                     if (analysis == null) {
                         Text(text.text, fontSize = 24.sp)
-                        Loading("Analyse…")
+                        Loading(stringResource(R.string.study_analyzing))
                     } else {
                         val highlight = analysis.grammar.filter { it.point == selection.grammar }.map { it.first..it.last }
                         Sentence(analysis, selection.readings, selection.word, highlight, furigana, onWord)
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                        FilterChip(selected = furigana, onClick = { furigana = !furigana }, label = { Text("Furigana") })
+                        FilterChip(selected = furigana, onClick = { furigana = !furigana }, label = { Text(stringResource(R.string.study_furigana)) })
                         Spacer(Modifier.width(8.dp))
-                        TextButton(onClick = { clipboard.setText(AnnotatedString(text.text)) }) { Text("Copier") }
+                        TextButton(onClick = { clipboard.setText(AnnotatedString(text.text)) }) { Text(stringResource(R.string.study_copy)) }
                     }
                     if (analysis != null) {
                         TabRow(selectedTabIndex = tab) {
-                            Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Mot") })
-                            Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Grammaire (${analysis.grammar.distinctBy { it.point }.size})") })
+                            Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text(stringResource(R.string.study_tab_word)) })
+                            Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text(stringResource(R.string.study_tab_grammar, analysis.grammar.distinctBy { it.point }.size)) })
                         }
                         // Seul le contenu de l'onglet défile : la phrase reste visible
                         Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
                             Spacer(Modifier.height(12.dp))
                             when (tab) {
-                                0 -> WordTab(analysis, selection.word, selection.wordInfo, selection.readings, tagLabel)
-                                else -> GrammarTab(analysis, selection.grammar, onGrammar)
+                                0 -> WordTab(analysis, selection.word, selection.wordInfo, selection.readings, lang, label)
+                                else -> GrammarTab(analysis, selection.grammar, lang, onGrammar)
                             }
                             Spacer(Modifier.height(24.dp))
                         }
@@ -199,30 +206,33 @@ private fun RubyText(parts: List<Ruby>, color: Color, showReading: Boolean, size
 // ---------------- Onglet « Mot » ----------------
 
 @Composable
-private fun WordTab(analysis: Analysis, index: Int?, info: WordInfo?, readings: Map<Int, String>, tagLabel: (String) -> String) {
+private fun WordTab(
+    analysis: Analysis,
+    index: Int?,
+    info: WordInfo?,
+    readings: Map<Int, String>,
+    lang: Lang,
+    tagLabel: (String) -> String,
+) {
     if (index == null) {
-        Text(
-            "Touchez un mot de la phrase pour voir sa lecture, sa forme de dictionnaire, sa conjugaison, " +
-                "ses définitions et ses kanji.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Text(stringResource(R.string.study_word_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(12.dp))
-        Legend()
+        Legend(lang)
         return
     }
     val word = analysis.words[index]
-    WordHeader(word, info, readings[index])
-    Inflection(word)
+    WordHeader(word, info, readings[index], lang)
+    Inflection(word, lang)
     when {
-        info == null -> Loading("Recherche dans le dictionnaire…")
-        info.results.isEmpty() -> Text("Aucune entrée trouvée dans le dictionnaire.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        else -> Definitions(info, tagLabel)
+        info == null -> Loading(stringResource(R.string.study_looking_up))
+        info.results.isEmpty() -> Text(stringResource(R.string.study_no_entry), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        else -> Definitions(info, lang, tagLabel)
     }
-    info?.kanji?.takeIf { it.isNotEmpty() }?.let { KanjiSection(it) }
+    info?.kanji?.takeIf { it.isNotEmpty() }?.let { KanjiSection(it, lang) }
 }
 
 @Composable
-private fun WordHeader(word: Word, info: WordInfo?, corrected: String?) {
+private fun WordHeader(word: Word, info: WordInfo?, corrected: String?, lang: Lang) {
     val entry = info?.results?.firstOrNull()?.entries?.firstOrNull()
     // Lecture : corrigée par JMdict, sinon celle de Kuromoji, sinon celle du dictionnaire
     val parts = if (corrected != null) {
@@ -236,9 +246,9 @@ private fun WordHeader(word: Word, info: WordInfo?, corrected: String?) {
         SelectionContainer { RubyText(parts, kindColor(word.kind), true, 34.sp) }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.padding(bottom = 6.dp)) {
-            Text(word.kind.label, style = MaterialTheme.typography.labelLarge, color = kindColor(word.kind))
+            Text(word.kind.label(lang), style = MaterialTheme.typography.labelLarge, color = kindColor(word.kind))
             if (word.lemma != word.surface) {
-                Text("forme de base : ${word.lemma}", style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.study_base_form, word.lemma), style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
@@ -246,7 +256,7 @@ private fun WordHeader(word: Word, info: WordInfo?, corrected: String?) {
 
 /** Décomposition : 寄せた = 寄せる + た (passé). */
 @Composable
-private fun Inflection(word: Word) {
+private fun Inflection(word: Word, lang: Lang) {
     val steps = word.inflection
     if (steps.isEmpty()) return
     Surface(
@@ -260,61 +270,65 @@ private fun Inflection(word: Word) {
                 style = MaterialTheme.typography.titleSmall,
             )
             Spacer(Modifier.height(4.dp))
-            steps.forEach { Text("• ${it.label} : ${it.meaning}", style = MaterialTheme.typography.bodyMedium) }
+            val sep = if (lang == Lang.FR) " : " else ": "
+            steps.forEach { Text("• ${it.label}$sep${it.meaning(lang)}", style = MaterialTheme.typography.bodyMedium) }
         }
     }
 }
 
 @Composable
-private fun Definitions(info: WordInfo, tagLabel: (String) -> String) {
+private fun Definitions(info: WordInfo, lang: Lang, tagLabel: (String) -> String) {
     info.results.forEachIndexed { r, result ->
         if (r > 0) {
             Spacer(Modifier.height(8.dp))
-            Text("Autre découpage : ${result.key}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(R.string.study_other_split, result.key), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
         }
-        result.entries.take(if (r == 0) 3 else 1).forEach { EntryCard(it, tagLabel) }
+        result.entries.take(if (r == 0) 3 else 1).forEach { EntryCard(it, lang, tagLabel) }
     }
 }
 
 @Composable
-private fun EntryCard(entry: DictEntry, tagLabel: (String) -> String) {
+private fun EntryCard(entry: DictEntry, lang: Lang, tagLabel: (String) -> String) {
     Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             val written = (entry.kanji.take(2) + entry.kana.take(2)).distinct().joinToString(" ・ ")
             Text(written, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             if (entry.common) {
                 Spacer(Modifier.width(8.dp))
-                Badge("courant", MaterialTheme.colorScheme.tertiaryContainer)
+                Badge(stringResource(R.string.study_common), MaterialTheme.colorScheme.tertiaryContainer)
             }
         }
-        if (entry.sensesFr.isNotEmpty()) {
-            SensesList(entry.sensesFr, tagLabel)
-            Text("En anglais :", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        // Définitions françaises (JMdict fre) seulement en français ; l'anglais toujours
+        if (lang == Lang.FR && entry.sensesFr.isNotEmpty()) {
+            SensesList(entry.sensesFr, lang, tagLabel)
+            Text(stringResource(R.string.study_in_english), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp))
         }
-        SensesList(entry.senses.take(6), tagLabel)
+        SensesList(entry.senses.take(6), lang, tagLabel)
         HorizontalDivider(Modifier.padding(top = 6.dp))
     }
 }
 
 @Composable
-private fun SensesList(senses: List<Sense>, tagLabel: (String) -> String) {
+private fun SensesList(senses: List<Sense>, lang: Lang, tagLabel: (String) -> String) {
+    // Typographie : espace avant le point-virgule en français seulement
+    val sep = if (lang == Lang.FR) " ; " else "; "
     senses.forEachIndexed { i, s ->
         Column(Modifier.padding(top = 4.dp)) {
             val tags = (s.pos + s.misc).map(tagLabel).distinct()
             if (tags.isNotEmpty()) {
                 Text(tags.joinToString(" · "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text("${i + 1}. " + s.glosses.joinToString(" ; "), style = MaterialTheme.typography.bodyLarge)
+            Text("${i + 1}. " + s.glosses.joinToString(sep), style = MaterialTheme.typography.bodyLarge)
             s.info.forEach { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
 }
 
 @Composable
-private fun KanjiSection(kanji: List<KanjiInfo>) {
+private fun KanjiSection(kanji: List<KanjiInfo>, lang: Lang) {
     Spacer(Modifier.height(12.dp))
-    Text("Kanji", style = MaterialTheme.typography.titleMedium)
+    Text(stringResource(R.string.study_kanji), style = MaterialTheme.typography.titleMedium)
     kanji.forEach { k ->
         Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
             Text(
@@ -323,13 +337,14 @@ private fun KanjiSection(kanji: List<KanjiInfo>) {
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text((k.meaningsFr.ifEmpty { k.meaningsEn }).take(6).joinToString(", "), style = MaterialTheme.typography.bodyLarge)
-                if (k.onyomi.isNotEmpty()) Text("on : " + k.onyomi.joinToString("、"), style = MaterialTheme.typography.bodyMedium)
-                if (k.kunyomi.isNotEmpty()) Text("kun : " + k.kunyomi.joinToString("、"), style = MaterialTheme.typography.bodyMedium)
+                val meanings = if (lang == Lang.FR) k.meaningsFr.ifEmpty { k.meaningsEn } else k.meaningsEn
+                Text(meanings.take(6).joinToString(", "), style = MaterialTheme.typography.bodyLarge)
+                if (k.onyomi.isNotEmpty()) Text(stringResource(R.string.kanji_on, k.onyomi.joinToString("、")), style = MaterialTheme.typography.bodyMedium)
+                if (k.kunyomi.isNotEmpty()) Text(stringResource(R.string.kanji_kun, k.kunyomi.joinToString("、")), style = MaterialTheme.typography.bodyMedium)
                 val meta = listOfNotNull(
-                    k.jlpt?.let { "JLPT $it (ancien)" },
-                    k.grade?.let { if (it <= 6) "école : ${it}e année" else "jōyō (collège)" },
-                    k.strokes?.let { "$it traits" },
+                    k.jlpt?.let { stringResource(R.string.kanji_jlpt, it) },
+                    k.grade?.let { if (it <= 6) stringResource(R.string.kanji_grade, it) else stringResource(R.string.kanji_jouyou) },
+                    k.strokes?.let { stringResource(R.string.kanji_strokes, it) },
                 )
                 if (meta.isNotEmpty()) {
                     Text(meta.joinToString(" · "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -341,11 +356,11 @@ private fun KanjiSection(kanji: List<KanjiInfo>) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Legend() {
+private fun Legend(lang: Lang) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         listOf(WordKind.NOUN, WordKind.VERB, WordKind.I_ADJECTIVE, WordKind.PARTICLE, WordKind.PROPER_NOUN, WordKind.ADVERB, WordKind.COPULA)
             .forEach {
-                val label = if (it == WordKind.I_ADJECTIVE) "adjectif" else it.label
+                val label = if (it == WordKind.I_ADJECTIVE) stringResource(R.string.study_adjective) else it.label(lang)
                 Text(label, color = kindColor(it), style = MaterialTheme.typography.labelLarge)
             }
     }
@@ -354,18 +369,19 @@ private fun Legend() {
 // ---------------- Onglet « Grammaire » ----------------
 
 @Composable
-private fun GrammarTab(analysis: Analysis, selected: GrammarPoint?, onGrammar: (GrammarPoint) -> Unit) {
+private fun GrammarTab(analysis: Analysis, selected: GrammarPoint?, lang: Lang, onGrammar: (GrammarPoint) -> Unit) {
     if (analysis.grammar.isEmpty()) {
-        Text("Aucun point de grammaire repéré dans cette bulle.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.grammar_none), color = MaterialTheme.colorScheme.onSurfaceVariant)
         return
     }
     Text(
-        "Touchez un point pour le repérer dans la phrase.",
+        stringResource(R.string.grammar_hint),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     // Un point par fiche, même s'il apparaît plusieurs fois (deux を…)
     analysis.grammar.groupBy { it.point }.forEach { (p, matches) ->
+        val text = p.text(lang)
         val excerpts = matches.map { m -> analysis.tokens.subList(m.first, m.last + 1).joinToString("") { it.surface } }.distinct()
         Surface(
             color = if (p == selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -374,20 +390,21 @@ private fun GrammarTab(analysis: Analysis, selected: GrammarPoint?, onGrammar: (
         ) {
             Column(Modifier.padding(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(p.pattern, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(text.pattern, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(8.dp))
-                    Text(p.title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                    Text(text.title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                     Badge(p.level, levelColor(p.level))
                 }
-                val times = if (matches.size > 1) " (${matches.size} fois)" else ""
+                val quoted = excerpts.map { stringResource(R.string.grammar_quote, it) }.joinToString(", ")
+                val times = if (matches.size > 1) " " + stringResource(R.string.grammar_times, matches.size) else ""
                 Text(
-                    "dans la bulle : " + excerpts.joinToString(", ") { "« $it »" } + times,
+                    stringResource(R.string.grammar_in_bubble, quoted) + times,
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary,
                 )
                 Spacer(Modifier.height(4.dp))
-                Text(p.explanation, style = MaterialTheme.typography.bodyMedium)
-                p.example?.let {
-                    Text("Ex. : $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Text(text.explanation, style = MaterialTheme.typography.bodyMedium)
+                text.exampleJa?.let {
+                    Text(stringResource(R.string.grammar_example, "$it ${text.exampleTranslation.orEmpty()}"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp))
                 }
             }

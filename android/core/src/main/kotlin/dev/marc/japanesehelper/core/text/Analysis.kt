@@ -16,23 +16,26 @@ data class Token(
     val isContent get() = pos1 !in setOf("記号")
 }
 
-enum class WordKind(val label: String) {
-    NOUN("nom"),
-    PROPER_NOUN("nom propre"),
-    PRONOUN("pronom"),
-    NUMBER("nombre"),
-    VERB("verbe"),
-    I_ADJECTIVE("adjectif en -i"),
-    NA_ADJECTIVE("adjectif en -na"),
-    ADVERB("adverbe"),
-    ADNOMINAL("déterminant"),
-    PARTICLE("particule"),
-    COPULA("copule"),
-    CONJUNCTION("conjonction"),
-    INTERJECTION("interjection"),
-    PREFIX("préfixe"),
-    SYMBOL("ponctuation"),
-    OTHER("autre"),
+enum class WordKind(private val fr: String, private val en: String) {
+    NOUN("nom", "noun"),
+    PROPER_NOUN("nom propre", "proper noun"),
+    PRONOUN("pronom", "pronoun"),
+    NUMBER("nombre", "number"),
+    VERB("verbe", "verb"),
+    I_ADJECTIVE("adjectif en -i", "i-adjective"),
+    NA_ADJECTIVE("adjectif en -na", "na-adjective"),
+    ADVERB("adverbe", "adverb"),
+    ADNOMINAL("déterminant", "adnominal"),
+    PARTICLE("particule", "particle"),
+    COPULA("copule", "copula"),
+    CONJUNCTION("conjonction", "conjunction"),
+    INTERJECTION("interjection", "interjection"),
+    PREFIX("préfixe", "prefix"),
+    SYMBOL("ponctuation", "punctuation"),
+    OTHER("autre", "other"),
+    ;
+
+    fun label(lang: Lang) = if (lang == Lang.FR) fr else en
 }
 
 /** Texte avec sa lecture éventuelle (furigana au-dessus des kanji). */
@@ -70,60 +73,64 @@ data class Word(val tokens: List<Token>, val firstToken: Int, val kind: WordKind
         get() = tokens.dropWhile { it !== head }.drop(1).mapNotNull { Inflection.describe(it) }
 }
 
-/** Une terminaison ou un auxiliaire, avec son rôle. */
-data class Inflection(val surface: String, val baseForm: String, val meaning: String) {
+/** Une terminaison ou un auxiliaire, avec son rôle (français / anglais). */
+data class Inflection(val surface: String, val baseForm: String, private val fr: String, private val en: String) {
     /** い (いる), なかっ (ない) : forme lue + forme de base si elle diffère. */
     val label get() = if (baseForm == surface || baseForm == "*") surface else "$surface ($baseForm)"
 
+    fun meaning(lang: Lang) = if (lang == Lang.FR) fr else en
+
     companion object {
         fun describe(t: Token): Inflection? {
-            val meaning = when {
-                t.pos1 == "助動詞" -> when (t.baseForm) {
-                    "た" -> "passé / action accomplie"
-                    "ない" -> "négation"
-                    "ぬ", "ん" -> "négation (littéraire ou familière)"
-                    "ます" -> "forme polie"
-                    "です" -> "copule polie (« être »)"
-                    "だ" -> if (t.conjForm == "体言接続") "liaison avec un nom (な)" else "copule (« être »)"
-                    "たい" -> "désir (« vouloir »)"
-                    "う" -> "volonté, proposition (« faisons », « je vais »)"
-                    "まい" -> "volonté négative ou supposition négative"
-                    "らしい" -> "ouï-dire, apparence (« il paraît que »)"
-                    "ある" -> "« être » (dans である, style écrit)"
-                    else -> "auxiliaire ${t.baseForm}"
+            val b = t.baseForm
+            val (fr, en) = when {
+                t.pos1 == "助動詞" -> when (b) {
+                    "た" -> "passé / action accomplie" to "past / completed action"
+                    "ない" -> "négation" to "negation"
+                    "ぬ", "ん" -> "négation (littéraire ou familière)" to "negation (literary or casual)"
+                    "ます" -> "forme polie" to "polite form"
+                    "です" -> "copule polie (« être »)" to "polite copula (\"to be\")"
+                    "だ" -> if (t.conjForm == "体言接続") "liaison avec un nom (な)" to "link to a noun (な)"
+                    else "copule (« être »)" to "copula (\"to be\")"
+                    "たい" -> "désir (« vouloir »)" to "desire (\"want to\")"
+                    "う" -> "volonté, proposition (« faisons », « je vais »)" to "volition, suggestion (\"let's\", \"I will\")"
+                    "まい" -> "volonté négative ou supposition négative" to "negative volition or negative guess"
+                    "らしい" -> "ouï-dire, apparence (« il paraît que »)" to "hearsay, appearance (\"apparently\")"
+                    "ある" -> "« être » (dans である, style écrit)" to "\"to be\" (in である, written style)"
+                    else -> "auxiliaire $b" to "auxiliary $b"
                 }
-                t.pos1 == "動詞" && t.pos2 == "接尾" -> when (t.baseForm) {
-                    "れる", "られる" -> "passif, potentiel ou respect"
-                    "せる", "させる" -> "causatif (« faire faire »)"
-                    else -> "suffixe verbal ${t.baseForm}"
+                t.pos1 == "動詞" && t.pos2 == "接尾" -> when (b) {
+                    "れる", "られる" -> "passif, potentiel ou respect" to "passive, potential or respect"
+                    "せる", "させる" -> "causatif (« faire faire »)" to "causative (\"make someone do\")"
+                    else -> "suffixe verbal $b" to "verb suffix $b"
                 }
-                t.pos1 == "動詞" && t.pos2 == "非自立" -> when (t.baseForm) {
-                    "いる" -> "action en cours ou état (〜ている)"
-                    "しまう" -> "action achevée, souvent avec regret (〜てしまう)"
-                    "おく" -> "faire à l'avance (〜ておく)"
-                    "みる" -> "essayer (〜てみる)"
-                    "くる" -> "évolution vers le locuteur, « commencer à » (〜てくる)"
-                    "いく" -> "évolution qui s'éloigne, « continuer à » (〜ていく)"
-                    "ある" -> "état résultant d'une action (〜てある)"
-                    "なる" -> "« devenir » ; avec ならない : obligation"
-                    "くれる", "もらう", "あげる" -> "service rendu (〜て${t.baseForm})"
-                    else -> "verbe auxiliaire ${t.baseForm}"
+                t.pos1 == "動詞" && t.pos2 == "非自立" -> when (b) {
+                    "いる" -> "action en cours ou état (〜ている)" to "ongoing action or state (〜ている)"
+                    "しまう" -> "action achevée, souvent avec regret (〜てしまう)" to "completed action, often regretted (〜てしまう)"
+                    "おく" -> "faire à l'avance (〜ておく)" to "do in advance (〜ておく)"
+                    "みる" -> "essayer (〜てみる)" to "try doing (〜てみる)"
+                    "くる" -> "évolution vers le locuteur, « commencer à » (〜てくる)" to "change towards the speaker, \"start to\" (〜てくる)"
+                    "いく" -> "évolution qui s'éloigne, « continuer à » (〜ていく)" to "change moving away, \"go on\" (〜ていく)"
+                    "ある" -> "état résultant d'une action (〜てある)" to "state resulting from an action (〜てある)"
+                    "なる" -> "« devenir » ; avec ならない : obligation" to "\"become\"; with ならない: obligation"
+                    "くれる", "もらう", "あげる" -> "service rendu (〜て$b)" to "doing a favor (〜て$b)"
+                    else -> "verbe auxiliaire $b" to "auxiliary verb $b"
                 }
-                t.pos1 == "助詞" && t.pos2 == "接続助詞" -> when (t.baseForm) {
-                    "て", "で" -> "forme en て (liaison, enchaînement)"
-                    "ば" -> "condition (« si »)"
-                    else -> "liaison ${t.baseForm}"
+                t.pos1 == "助詞" && t.pos2 == "接続助詞" -> when (b) {
+                    "て", "で" -> "forme en て (liaison, enchaînement)" to "て-form (linking)"
+                    "ば" -> "condition (« si »)" to "condition (\"if\")"
+                    else -> "liaison $b" to "conjunction $b"
                 }
-                t.pos1 == "形容詞" && t.pos2 == "非自立" -> "adjectif auxiliaire ${t.baseForm}"
-                t.pos1 == "名詞" && t.pos3 == "助動詞語幹" -> when (t.baseForm) {
-                    "そう" -> "apparence (« avoir l'air de »)"
-                    "よう" -> "ressemblance, apparence (〜ようだ)"
-                    else -> t.baseForm
+                t.pos1 == "形容詞" && t.pos2 == "非自立" -> "adjectif auxiliaire $b" to "auxiliary adjective $b"
+                t.pos1 == "名詞" && t.pos3 == "助動詞語幹" -> when (b) {
+                    "そう" -> "apparence (« avoir l'air de »)" to "appearance (\"looks like\")"
+                    "よう" -> "ressemblance, apparence (〜ようだ)" to "resemblance, appearance (〜ようだ)"
+                    else -> b to b
                 }
-                t.pos1 == "名詞" && t.pos2 == "接尾" -> "suffixe ${t.surface}"
+                t.pos1 == "名詞" && t.pos2 == "接尾" -> "suffixe ${t.surface}" to "suffix ${t.surface}"
                 else -> return null
             }
-            return Inflection(t.surface, t.baseForm, meaning)
+            return Inflection(t.surface, b, fr, en)
         }
     }
 }

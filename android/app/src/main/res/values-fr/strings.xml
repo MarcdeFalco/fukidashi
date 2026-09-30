@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="content_lang" translatable="false">fr</string>
+
+    <!-- Accueil -->
+    <string name="home_tagline">Lire le japonais, bulle par bulle</string>
+    <string name="home_photograph">Photographier une page</string>
+    <string name="home_open_images">Ouvrir des images</string>
+    <string name="home_open_cbz">Ouvrir un CBZ</string>
+    <string name="home_models_ready">Modèles prêts</string>
+    <string name="home_about">À propos et licences</string>
+
+    <!-- Chargement des modèles -->
+    <string name="status_preparing">Préparation des modèles…</string>
+    <string name="status_npu_compile">Optimisation pour le NPU (première fois, ~1 min)…</string>
+    <string name="status_unavailable">Reconnaissance du texte indisponible sur cet appareil</string>
+    <string name="error_models">Chargement des modèles impossible</string>
+    <string name="error_open">Ouverture impossible</string>
+    <string name="error_detect">Détection impossible</string>
+    <string name="error_lookup">Recherche impossible</string>
+    <string name="error_format">%1$s : %2$s</string>
+    <string name="ok">OK</string>
+
+    <!-- Lecteur -->
+    <string name="reader_detecting">Détection des bulles…</string>
+    <plurals name="reader_zones">
+        <item quantity="one">%d zone</item>
+        <item quantity="many">%d zones</item>
+        <item quantity="other">%d zones</item>
+    </plurals>
+    <string name="reader_next_photo">Photographier la page suivante</string>
+    <plurals name="source_images">
+        <item quantity="one">%d image</item>
+        <item quantity="many">%d images</item>
+        <item quantity="other">%d images</item>
+    </plurals>
+    <string name="source_photos">Photos</string>
+
+    <!-- Étude d'une bulle -->
+    <string name="study_reading">Lecture de la bulle…</string>
+    <string name="study_error">Erreur : %s</string>
+    <string name="study_analyzing">Analyse…</string>
+    <string name="study_furigana">Furigana</string>
+    <string name="study_copy">Copier</string>
+    <string name="study_tab_word">Mot</string>
+    <string name="study_tab_grammar">Grammaire (%d)</string>
+    <string name="study_word_hint">Touchez un mot de la phrase pour voir sa lecture, sa forme de dictionnaire, sa conjugaison, ses définitions et ses kanji.</string>
+    <string name="study_looking_up">Recherche dans le dictionnaire…</string>
+    <string name="study_no_entry">Aucune entrée trouvée dans le dictionnaire.</string>
+    <string name="study_base_form">forme de base : %s</string>
+    <string name="study_other_split">Autre découpage : %s</string>
+    <string name="study_common">courant</string>
+    <string name="study_in_english">En anglais :</string>
+    <string name="study_kanji">Kanji</string>
+    <string name="study_adjective">adjectif</string>
+    <string name="kanji_on">on : %s</string>
+    <string name="kanji_kun">kun : %s</string>
+    <string name="kanji_jlpt">JLPT %d (ancien)</string>
+    <string name="kanji_grade">école : %de année</string>
+    <string name="kanji_jouyou">jōyō (collège)</string>
+    <string name="kanji_strokes">%d traits</string>
+    <string name="grammar_none">Aucun point de grammaire repéré dans cette bulle.</string>
+    <string name="grammar_hint">Touchez un point pour le repérer dans la phrase.</string>
+    <string name="grammar_in_bubble">dans la bulle : %s</string>
+    <string name="grammar_quote">« %s »</string>
+    <string name="grammar_times">(%d fois)</string>
+    <string name="grammar_example">Ex. : %s</string>
+
+    <!-- Caméra -->
+    <string name="camera_permission">L\'accès à la caméra est nécessaire pour photographier une page.</string>
+    <string name="camera_allow">Autoriser</string>
+    <string name="camera_back">Retour</string>
+    <string name="camera_close">✕ Fermer</string>
+    <string name="camera_torch">Lampe</string>
+    <string name="camera_auto">Auto</string>
+    <string name="camera_error">Photo impossible : %s</string>
+    <string name="camera_capturing">Photo… ne bougez pas</string>
+    <string name="camera_tap">Appuyez pour photographier</string>
+    <string name="camera_aim">Visez la page…</string>
+    <string name="camera_hold">Tenez immobile…</string>
+    <string name="camera_aim_hold">Visez la page et tenez le téléphone immobile</string>
+
+    <!-- À propos -->
+    <string name="about_back">← Retour</string>
+    <string name="about_version">Version %s</string>
+    <string name="about_offline">Tout fonctionne sur votre téléphone : aucune image, aucun texte ni aucune donnée personnelle n\'est envoyé sur Internet.</string>
+    <string name="about_free_software">Logiciel libre sous licence GNU AGPL-3.0 : vous pouvez consulter, modifier et redistribuer son code source.</string>
+    <string name="about_source">Code source</string>
+    <string name="about_privacy">Politique de confidentialité</string>
+    <string name="about_components">Composants et données utilisés</string>
+    <string name="about_license">Licence : %s</string>
+    <string name="credit_jmdict">Dictionnaire japonais et dictionnaire des kanji. Propriété de l\'Electronic Dictionary Research and Development Group, utilisés conformément à sa licence.</string>
+    <string name="credit_jmdict_simplified">Version JSON de JMdict et KANJIDIC2.</string>
+    <string name="credit_manga_ocr">Modèle de reconnaissance du texte des mangas.</string>
+    <string name="credit_detector">Modèle de détection des bulles et du texte.</string>
+    <string name="credit_kuromoji">Analyse morphologique du japonais.</string>
+    <string name="credit_onnx">Exécution des modèles sur le téléphone.</string>
+    <string name="credit_qnn">Accélération sur le NPU des puces Snapdragon.</string>
+    <string name="credit_jetpack">Interface et caméra.</string>
+</resources>

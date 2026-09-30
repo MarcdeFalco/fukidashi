@@ -61,7 +61,9 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.marc.japanesehelper.BubbleText
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import dev.marc.japanesehelper.R
 import dev.marc.japanesehelper.CapturedPages
 import dev.marc.japanesehelper.PageSource
 import dev.marc.japanesehelper.ReaderViewModel
@@ -111,9 +113,9 @@ fun ReaderScreen(vm: ReaderViewModel, source: PageSource) {
         }
 
         val status = when {
-            !modelsReady -> loadingStatus
-            detections[pager.currentPage] == null -> "Détection des bulles…"
-            else -> "${detections[pager.currentPage]!!.size} zones"
+            !modelsReady -> stringResource(loadingStatus)
+            detections[pager.currentPage] == null -> stringResource(R.string.reader_detecting)
+            else -> detections[pager.currentPage]!!.size.let { pluralStringResource(R.plurals.reader_zones, it, it) }
         }
         Text(
             "${pager.currentPage + 1} / ${source.pageCount} · $status",
@@ -132,7 +134,7 @@ fun ReaderScreen(vm: ReaderViewModel, source: PageSource) {
             Button(
                 onClick = vm::openCamera,
                 modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp),
-            ) { Text("Photographier la page suivante") }
+            ) { Text(stringResource(R.string.reader_next_photo)) }
         }
 
         selection?.let { sel ->

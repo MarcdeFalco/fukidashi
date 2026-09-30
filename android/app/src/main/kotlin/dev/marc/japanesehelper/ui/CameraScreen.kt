@@ -53,6 +53,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.res.stringResource
+import dev.marc.japanesehelper.R
 import dev.marc.japanesehelper.SteadinessMonitor
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
@@ -80,9 +82,9 @@ fun CameraScreen(outputDir: File, onCaptured: (File) -> Unit, onClose: () -> Uni
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("L'accès à la caméra est nécessaire pour photographier une page.", color = Color.White)
-            Button(onClick = { askPermission.launch(Manifest.permission.CAMERA) }) { Text("Autoriser") }
-            TextButton(onClick = onClose) { Text("Retour") }
+            Text(stringResource(R.string.camera_permission), color = Color.White)
+            Button(onClick = { askPermission.launch(Manifest.permission.CAMERA) }) { Text(stringResource(R.string.camera_allow)) }
+            TextButton(onClick = onClose) { Text(stringResource(R.string.camera_back)) }
         }
         return
     }
@@ -163,7 +165,7 @@ private fun CameraContent(outputDir: File, onCaptured: (File) -> Unit, onClose: 
                     Log.e("CameraScreen", "Photo impossible", e)
                     capturing = false
                     monitor.reset()
-                    error = "Photo impossible : ${e.message}"
+                    error = context.getString(R.string.camera_error, e.message.orEmpty())
                 }
             },
         )
@@ -195,15 +197,15 @@ private fun CameraContent(outputDir: File, onCaptured: (File) -> Unit, onClose: 
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ChipButton("✕ Fermer", active = false, onClick = onClose)
+            ChipButton(stringResource(R.string.camera_close), active = false, onClick = onClose)
             Row {
                 if (camera?.cameraInfo?.hasFlashUnit() == true) {
-                    ChipButton("Lampe", active = torch) {
+                    ChipButton(stringResource(R.string.camera_torch), active = torch) {
                         torch = !torch
                         camera?.cameraControl?.enableTorch(torch)
                     }
                 }
-                ChipButton("Auto", active = auto) {
+                ChipButton(stringResource(R.string.camera_auto), active = auto) {
                     auto = !auto
                     monitor.reset()
                 }
@@ -217,12 +219,12 @@ private fun CameraContent(outputDir: File, onCaptured: (File) -> Unit, onClose: 
         ) {
             val hint = when {
                 error != null -> error!!
-                capturing -> "Photo… ne bougez pas"
-                !monitor.available -> "Appuyez pour photographier"
-                auto && !aimed -> "Visez la page…"
-                auto && steadiness > 0f -> "Tenez immobile…"
-                auto -> "Visez la page et tenez le téléphone immobile"
-                else -> "Appuyez pour photographier"
+                capturing -> stringResource(R.string.camera_capturing)
+                !monitor.available -> stringResource(R.string.camera_tap)
+                auto && !aimed -> stringResource(R.string.camera_aim)
+                auto && steadiness > 0f -> stringResource(R.string.camera_hold)
+                auto -> stringResource(R.string.camera_aim_hold)
+                else -> stringResource(R.string.camera_tap)
             }
             Text(
                 hint,

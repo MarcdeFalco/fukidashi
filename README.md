@@ -1,74 +1,82 @@
-<p align="center"><img src="docs/store/icon-512.png" width="128" alt="Icône de Fukidashi"></p>
+<p align="center"><img src="docs/store/icon-512.png" width="128" alt="Fukidashi icon"></p>
 
 <h1 align="center">吹き出し Fukidashi</h1>
 
-Application Android pour lire le japonais — mangas, livres — bulle par bulle, **hors ligne**.
+<p align="center"><b>English</b> · <a href="README.fr.md">Français</a></p>
 
-Ouvrez une page (image, archive CBZ, capture partagée) ou photographiez un livre papier :
-les bulles sont détectées, et toucher une bulle ouvre un écran d'étude avec les furigana,
-les mots cliquables (lecture, forme du dictionnaire, conjugaison décomposée, définitions,
-kanji) et les points de grammaire expliqués en français.
+An Android app to read Japanese — manga, books — bubble by bubble, **offline**.
 
-Tout tourne sur le téléphone : sur le NPU des puces Snapdragon (ONNX Runtime + Qualcomm QNN),
-sinon sur le processeur.
+Open a page (image, CBZ archive, shared screenshot) or photograph a paper book: the speech
+bubbles are detected, and tapping a bubble opens a study screen with furigana, tappable words
+(reading, dictionary form, conjugation breakdown, definitions, kanji) and the grammar points
+of the sentence, explained in English or French.
+
+Everything runs on the phone: on the NPU of Snapdragon chips (ONNX Runtime + Qualcomm QNN),
+otherwise on the CPU.
 
 <p align="center">
-  <img src="docs/store/screenshot-1.png" width="23%" alt="Lecteur : bulles détectées">
-  <img src="docs/store/screenshot-2.png" width="23%" alt="Phrase avec furigana, mots colorés par nature">
-  <img src="docs/store/screenshot-3.png" width="23%" alt="Fiche d'un mot : conjugaison et définitions">
-  <img src="docs/store/screenshot-4.png" width="23%" alt="Points de grammaire surlignés dans la phrase">
+  <img src="docs/store/en/screenshot-1.png" width="23%" alt="Reader: detected bubbles">
+  <img src="docs/store/en/screenshot-2.png" width="23%" alt="Sentence with furigana, words colored by part of speech">
+  <img src="docs/store/en/screenshot-3.png" width="23%" alt="Word card: conjugation and definitions">
+  <img src="docs/store/en/screenshot-4.png" width="23%" alt="Grammar points highlighted in the sentence">
 </p>
 
-<p align="center"><sub>Pages d'exemple : « ブラックジャックによろしく », 佐藤秀峰 (œuvre en libre réutilisation,
-<a href="https://densho810.com/free/">conditions</a>).</sub></p>
+<p align="center"><sub>Sample page: “ブラックジャックによろしく” by 佐藤秀峰 (Shūhō Satō), free for reuse
+(<a href="https://densho810.com/free/">terms</a>).</sub></p>
 
-| Sur un Galaxy S25 Ultra | NPU Snapdragon | Processeur seul |
+| On a Galaxy S25 Ultra | Snapdragon NPU | CPU only |
 |---|---|---|
-| Détection des bulles d'une page | 60 ms | 1,2 s |
-| Lecture d'une bulle | 50 ms | 360 ms |
+| Bubble detection (one page) | 60 ms | 1.2 s |
+| Reading one bubble | 50 ms | 360 ms |
 
-## Organisation
+## Languages
 
-| Dossier | Contenu |
+The app is available in **English** (default) and **French**; on Android 13+ the language can be
+chosen per app in the system settings. Grammar explanations, word roles and dictionary labels are
+translated; definitions come from JMdict (English, plus French when available).
+
+## Layout
+
+| Folder | Contents |
 |---|---|
-| `export/` | Scripts Python : conversion des modèles en ONNX, versions de référence des traitements, construction du dictionnaire |
-| `android/core/` | Traitements en Kotlin pur (détection, OCR, analyse du japonais, grammaire), testés sur JVM |
-| `android/app/` | Application (Jetpack Compose, CameraX) |
-| `android/models/` | Pack de ressources Play (modèles + dictionnaire) |
-| `docs/` | Politique de confidentialité, fiche et visuels Play Store |
+| `export/` | Python scripts: model conversion to ONNX, reference implementations, dictionary build, store graphics |
+| `android/core/` | Pure Kotlin processing (detection, OCR, Japanese analysis, grammar), tested on the JVM |
+| `android/app/` | The app (Jetpack Compose, CameraX) |
+| `android/models/` | Play asset pack (models + dictionary) |
+| `docs/` | Privacy policy, Play Store listing and graphics |
 
-## Construire
+## Building
 
-Les modèles et le dictionnaire ne sont pas versionnés ; il faut les générer :
+Models and dictionary are not versioned; they have to be generated:
 
 ```bash
 python3.12 -m venv .venv && .venv/bin/pip install -r export/requirements.txt
-# Détecteur de bulles YOLOv8 (comic-speech-bubble-detector.pt) à placer à la racine
+# YOLOv8 bubble detector (comic-speech-bubble-detector.pt) at the repository root
 .venv/bin/python export/export_models.py
-# JMdict / KANJIDIC2 de jmdict-simplified dans export/data/ (voir build_dictionary.py)
+# JMdict / KANJIDIC2 from jmdict-simplified in export/data/ (see build_dictionary.py)
 .venv/bin/python export/build_dictionary.py
 ```
 
-Puis, avec le SDK Android :
+Then, with the Android SDK:
 
 ```bash
 cd android
-./gradlew :core:test          # tests du pipeline
-./gradlew :app:assembleDebug  # APK de développement (modèles inclus)
-./gradlew :app:bundleRelease  # AAB Play Store (modèles dans le pack :models)
+./gradlew :core:test          # pipeline tests
+./gradlew :app:assembleDebug  # development APK (models included)
+./gradlew :app:bundleRelease  # Play Store AAB (models in the :models asset pack)
 ```
 
-`android/bench.sh` mesure les performances sur un téléphone branché.
+`android/bench.sh` measures performance on a connected phone.
 
-## Licences
+## Licenses
 
-Code sous **GNU AGPL-3.0** (voir `LICENSE`), notamment parce que le détecteur de bulles est
-un modèle YOLOv8 (Ultralytics, AGPL-3.0).
+Code under the **GNU AGPL-3.0** (see `LICENSE`), in particular because the bubble detector is a
+YOLOv8 model (Ultralytics, AGPL-3.0).
 
-Composants et données tiers :
+Third-party components and data:
 - [manga-ocr](https://github.com/kha-white/manga-ocr) (Maciej Budyś) — Apache 2.0
 - [JMdict / KANJIDIC2](https://www.edrdg.org/edrdg/licence.html) (EDRDG), via
   [jmdict-simplified](https://github.com/scriptin/jmdict-simplified) — CC BY-SA 4.0
-- [Kuromoji](https://github.com/atilika/kuromoji) + IPADIC — Apache 2.0 / licence IPADIC
-- [ONNX Runtime](https://onnxruntime.ai) — MIT ; Qualcomm AI Engine Direct (QNN) — licence Qualcomm
+- [Kuromoji](https://github.com/atilika/kuromoji) + IPADIC — Apache 2.0 / IPADIC license
+- [ONNX Runtime](https://onnxruntime.ai) — MIT; Qualcomm AI Engine Direct (QNN) — Qualcomm license
 - Jetpack Compose, CameraX — Apache 2.0

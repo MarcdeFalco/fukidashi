@@ -11,6 +11,7 @@ import dev.marc.japanesehelper.core.text.Analysis
 import dev.marc.japanesehelper.core.text.GrammarPoint
 import dev.marc.japanesehelper.core.text.JapaneseAnalyzer
 import dev.marc.japanesehelper.core.text.Kana
+import dev.marc.japanesehelper.core.text.Lang
 import dev.marc.japanesehelper.core.text.WordKind
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -63,9 +64,9 @@ class ReaderViewModel(app: Application) : AndroidViewModel(app) {
     private val _modelsReady = MutableStateFlow(false)
     val modelsReady: StateFlow<Boolean> = _modelsReady.asStateFlow()
 
-    /** Étape de chargement en cours, affichée tant que les modèles ne sont pas prêts. */
-    private val _loadingStatus = MutableStateFlow("Préparation des modèles…")
-    val loadingStatus: StateFlow<String> = _loadingStatus.asStateFlow()
+    /** Étape de chargement en cours (texte en ressource), affichée tant que les modèles ne sont pas prêts. */
+    private val _loadingStatus = MutableStateFlow(R.string.status_preparing)
+    val loadingStatus: StateFlow<Int> = _loadingStatus.asStateFlow()
 
     /** Zones détectées par page (absente = pas encore analysée). */
     private val _detections = MutableStateFlow<Map<Int, List<Detection>>>(emptyMap())
@@ -98,8 +99,8 @@ class ReaderViewModel(app: Application) : AndroidViewModel(app) {
             runCatching { engine.load { _loadingStatus.value = it } }
                 .onSuccess { _modelsReady.value = true }
                 .onFailure {
-                    _loadingStatus.value = "Reconnaissance du texte indisponible sur cet appareil"
-                    report("Chargement des modèles impossible (NPU Qualcomm requis)", it)
+                    _loadingStatus.value = R.string.status_unavailable
+                    report(R.string.error_models, it)
                 }
         }
     }
@@ -115,7 +116,7 @@ class ReaderViewModel(app: Application) : AndroidViewModel(app) {
                     _selection.value = null
                     _source.value = newSource
                 }
-                .onFailure { report("Ouverture impossible", it) }
+                .onFailure { report(R.string.error_open, it) }
         }
     }
 
@@ -162,7 +163,7 @@ class ReaderViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             runCatching { engine.detect(bitmap) }
                 .onSuccess { dets -> _detections.update { it + (page to dets) } }
-                .onFailure { report("Détection impossible", it) }
+                .onFailure { report(R.string.error_detect, it) }
             detecting.remove(page)
         }
     }
@@ -194,7 +195,7 @@ class ReaderViewModel(app: Application) : AndroidViewModel(app) {
         _selection.value = sel.copy(word = index, wordInfo = null, grammar = null)
         viewModelScope.launch {
             val info = runCatching { lookupWord(analysis, index) }
-                .onFailure { report("Recherche impossible", it) }.getOrNull() ?: return@launch
+                .onFailure { report(R.string.error_lookup, it) }.getOrNull() ?: return@launch
             _selection.update { if (it?.analysis == analysis && it.word == index) it.copy(wordInfo = info) else it }
         }
     }
@@ -247,10 +248,10 @@ class ReaderViewModel(app: Application) : AndroidViewModel(app) {
         _selection.update { it?.copy(grammar = if (it.grammar == point) null else point) }
     }
 
-    /** Libellé français d'un code JMdict (natures, registres). */
+    /** Libellé d'un code JMdict (natures, registres) dans la langue [lang]. */
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    fun tagLabel(code: String): String =
-        if (dictionary.isCompleted) runCatching { dictionary.getCompleted().tagLabel(code) }.getOrDefault(code) else code
+    fun tagLabel(code: String, lang: Lang): String =
+        if (dictionary.isCompleted) runCatching { dictionary.getCompleted().tagLabel(code, lang) }.getOrDefault(code) else code
 
     fun clearSelection() {
         ocrJob?.cancel()
@@ -261,9 +262,10 @@ class ReaderViewModel(app: Application) : AndroidViewModel(app) {
         _error.value = null
     }
 
-    private fun report(what: String, t: Throwable) {
-        Log.e("ReaderViewModel", what, t)
-        _error.value = "$what : ${t.message ?: t}"
+    private fun report(what: Int, t: Throwable) {
+        val app = getApplication<Application>()
+        Log.e("ReaderViewModel", app.getString(what), t)
+        _error.value = app.getString(R.string.error_format, app.getString(what), t.message ?: t.toString())
     }
 
     override fun onCleared() {

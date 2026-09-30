@@ -15,7 +15,6 @@ import java.util.zip.ZipFile
 
 /** Une suite de pages : images sélectionnées ou archive CBZ. */
 interface PageSource {
-    val title: String
     val pageCount: Int
     suspend fun load(index: Int): Bitmap
     fun close() {}
@@ -28,7 +27,7 @@ interface PageSource {
             val first = uris.first()
             val name = displayName(context, first)
             if (uris.size == 1 && name.lowercase().let { it.endsWith(".cbz") || it.endsWith(".zip") }) {
-                CbzSource.open(context, first, name)
+                CbzSource.open(context, first)
             } else {
                 ImagesSource(context, uris.sortedWith(compareBy(NaturalOrder) { displayName(context, it) }))
             }
@@ -42,7 +41,6 @@ interface PageSource {
 }
 
 private class ImagesSource(private val context: Context, private val uris: List<Uri>) : PageSource {
-    override val title = "${uris.size} image(s)"
     override val pageCount = uris.size
 
     override suspend fun load(index: Int) = withContext(Dispatchers.IO) {
@@ -53,7 +51,6 @@ private class ImagesSource(private val context: Context, private val uris: List<
 
 /** Pages photographiées avec la caméra, dans l'ordre de prise. */
 class CapturedPages(val files: List<File>) : PageSource {
-    override val title = "Photos"
     override val pageCount = files.size
 
     override suspend fun load(index: Int) = withContext(Dispatchers.IO) {
@@ -61,7 +58,7 @@ class CapturedPages(val files: List<File>) : PageSource {
     }
 }
 
-private class CbzSource(private val zip: ZipFile, override val title: String) : PageSource {
+private class CbzSource(private val zip: ZipFile) : PageSource {
     private val entries = zip.entries().toList()
         .filter { !it.isDirectory && IMAGE_EXT.any { ext -> it.name.lowercase().endsWith(ext) } }
         .filterNot { it.name.startsWith("__MACOSX") }
@@ -79,10 +76,10 @@ private class CbzSource(private val zip: ZipFile, override val title: String) : 
         private val IMAGE_EXT = listOf(".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp")
 
         /** ZipFile a besoin d'un accès aléatoire : on copie l'archive dans le cache. */
-        fun open(context: Context, uri: Uri, name: String): CbzSource {
+        fun open(context: Context, uri: Uri): CbzSource {
             val file = File(context.cacheDir, "current.cbz")
             context.contentResolver.openInputStream(uri)!!.use { input -> file.outputStream().use { input.copyTo(it) } }
-            return CbzSource(ZipFile(file), name.substringBeforeLast('.'))
+            return CbzSource(ZipFile(file))
         }
     }
 }

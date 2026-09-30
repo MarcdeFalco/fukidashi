@@ -1,6 +1,9 @@
 package dev.marc.japanesehelper.core
 
 import dev.marc.japanesehelper.core.text.Furigana
+import dev.marc.japanesehelper.core.text.Grammar
+import dev.marc.japanesehelper.core.text.Lang
+import dev.marc.japanesehelper.core.text.text
 import dev.marc.japanesehelper.core.text.JapaneseAnalyzer
 import dev.marc.japanesehelper.core.text.Ruby
 import dev.marc.japanesehelper.core.text.WordKind
@@ -61,5 +64,14 @@ class AnalysisTest {
         assertTrue("sou-looks" in grammar("雨が降りそうだ"))
         assertTrue("you" in grammar("まるで独立国のような状態にあり"))
         assertTrue("youtoomou" in grammar("明日は行こうと思う"))
+    }
+
+    @Test
+    fun everyGrammarPointIsTranslated() {
+        for (p in Grammar.points) {
+            val en = p.text(Lang.EN)
+            assertTrue(en.title.isNotBlank() && en.explanation.isNotBlank(), p.id)
+            assertTrue(p.text(Lang.FR).exampleTranslation?.isNotBlank() == true, "exemple FR : ${p.id}")
+        }
     }
 }

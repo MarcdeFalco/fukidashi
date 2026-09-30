@@ -2,6 +2,7 @@ package dev.marc.japanesehelper
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
+import dev.marc.japanesehelper.core.text.Lang
 import org.json.JSONArray
 import java.io.File
 
@@ -75,14 +76,18 @@ class Dictionary private constructor(private val db: SQLiteDatabase) {
             )
         }
 
-    /** Libellé d'un code JMdict (nature, registre…) : français pour les plus courants. */
-    fun tagLabel(code: String): String = TAG_FR[code] ?: when {
-        code.startsWith("v5") -> "verbe godan"            // v5k, v5r, v5s…
-        code.startsWith("v1") -> "verbe ichidan"
-        code.startsWith("v2") || code.startsWith("v4") -> "verbe ancien (classique)"
-        code.startsWith("vs") -> "verbe en する"
-        else -> null
-    } ?: tags[code] ?: code
+    /** Libellé court d'un code JMdict (nature, registre…) dans la langue [lang]. */
+    fun tagLabel(code: String, lang: Lang): String {
+        val fr = lang == Lang.FR
+        (if (fr) TAG_FR else TAG_EN)[code]?.let { return it }
+        return when {
+            code.startsWith("v5") -> if (fr) "verbe godan" else "godan verb" // v5k, v5r, v5s…
+            code.startsWith("v1") -> if (fr) "verbe ichidan" else "ichidan verb"
+            code.startsWith("v2") || code.startsWith("v4") -> if (fr) "verbe ancien (classique)" else "archaic verb (classical)"
+            code.startsWith("vs") -> if (fr) "verbe en する" else "する verb"
+            else -> tags[code] ?: code // description anglaise de JMdict
+        }
+    }
 
     private fun android.database.Cursor.intOrNull(i: Int) = if (isNull(i)) null else getInt(i)
 
@@ -136,6 +141,27 @@ class Dictionary private constructor(private val db: SQLiteDatabase) {
             "on-mim" to "onomatopée", "yoji" to "expression en 4 kanji", "rare" to "rare",
             "joc" to "humoristique", "derog" to "péjoratif", "form" to "soutenu", "poet" to "poétique",
             "chn" to "langage enfantin", "sens" to "sensible", "person" to "nom de personne", "place" to "lieu",
+        )
+
+        private val TAG_EN = mapOf(
+            "n" to "noun", "pn" to "pronoun", "n-suf" to "noun suffix", "n-pref" to "noun prefix",
+            "n-adv" to "adverbial noun", "n-t" to "temporal noun", "n-pr" to "proper noun",
+            "v1" to "ichidan verb", "vs" to "する verb", "vs-i" to "する verb",
+            "vk" to "irregular verb 来る", "vz" to "ずる verb", "vt" to "transitive", "vi" to "intransitive",
+            "v1-s" to "ichidan verb (くれる)", "vs-s" to "する verb (special)",
+            "adj-i" to "i-adjective", "adj-ix" to "i-adjective (いい/よい)", "adj-na" to "na-adjective",
+            "adj-no" to "noun + の (modifier)", "adj-pn" to "adnominal", "adj-t" to "taru-adjective",
+            "adj-f" to "prenominal", "adv" to "adverb", "adv-to" to "adverb + と", "aux" to "auxiliary",
+            "aux-v" to "auxiliary verb", "aux-adj" to "auxiliary adjective", "conj" to "conjunction",
+            "cop" to "copula", "ctr" to "counter", "exp" to "expression", "int" to "interjection",
+            "num" to "numeric", "pref" to "prefix", "prt" to "particle", "suf" to "suffix", "unc" to "unclassified",
+            "uk" to "usually kana", "uK" to "usually kanji", "arch" to "archaic", "obs" to "obsolete",
+            "col" to "colloquial", "hon" to "honorific (sonkeigo)", "hum" to "humble (kenjōgo)",
+            "pol" to "polite (teineigo)", "sl" to "slang", "vulg" to "vulgar", "male" to "male speech",
+            "fem" to "female speech", "abbr" to "abbreviation", "id" to "idiom",
+            "on-mim" to "onomatopoeia", "yoji" to "four-kanji idiom", "rare" to "rare",
+            "joc" to "jocular", "derog" to "derogatory", "form" to "formal", "poet" to "poetic",
+            "chn" to "children's language", "sens" to "sensitive", "person" to "person's name", "place" to "place name",
         )
     }
 }

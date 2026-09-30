@@ -1,6 +1,10 @@
 package dev.marc.japanesehelper.core.text
 
-/** Un point de grammaire expliqué en français. [level] : niveau JLPT indicatif. */
+/**
+ * Un point de grammaire. Les textes ici sont en français ; l'anglais est dans GrammarEn.kt.
+ * [level] : niveau JLPT indicatif. [example] : « phrase japonaise + espace + traduction ».
+ * Utiliser [text] pour l'affichage.
+ */
 data class GrammarPoint(
     val id: String,
     val pattern: String,
@@ -9,6 +13,23 @@ data class GrammarPoint(
     val explanation: String,
     val example: String? = null,
 )
+
+/** Textes d'un point de grammaire dans une langue donnée. */
+data class GrammarPointText(
+    val pattern: String,
+    val title: String,
+    val explanation: String,
+    val exampleJa: String?,
+    val exampleTranslation: String?,
+)
+
+fun GrammarPoint.text(lang: Lang): GrammarPointText {
+    val ja = example?.substringBefore(' ')
+    return when (lang) {
+        Lang.FR -> GrammarPointText(pattern, title, explanation, ja, example?.substringAfter(' ', ""))
+        Lang.EN -> GRAMMAR_EN.getValue(id).let { GrammarPointText(it.pattern ?: pattern, it.title, it.explanation, ja, it.example) }
+    }
+}
 
 /** Point de grammaire repéré sur les morceaux [first]..[last] de la phrase. */
 data class GrammarMatch(val point: GrammarPoint, val first: Int, val last: Int)

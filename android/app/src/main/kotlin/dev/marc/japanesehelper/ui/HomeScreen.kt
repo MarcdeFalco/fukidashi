@@ -22,6 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.res.stringResource
+import dev.marc.japanesehelper.R
 import dev.marc.japanesehelper.ReaderViewModel
 
 @Composable
@@ -41,13 +43,13 @@ fun HomeScreen(vm: ReaderViewModel, onAbout: () -> Unit) {
         ) {
             Text("吹き出し", style = MaterialTheme.typography.headlineLarge)
             Text("Fukidashi", style = MaterialTheme.typography.titleLarge)
-            Text("Lire le japonais, bulle par bulle", style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.home_tagline), style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(48.dp))
             Button(onClick = vm::openCamera, Modifier.fillMaxWidth()) {
-                Text("Photographier une page")
+                Text(stringResource(R.string.home_photograph))
             }
             OutlinedButton(onClick = { pickImages.launch(arrayOf("image/*")) }, Modifier.fillMaxWidth()) {
-                Text("Ouvrir des images")
+                Text(stringResource(R.string.home_open_images))
             }
             OutlinedButton(
                 onClick = {
@@ -55,15 +57,15 @@ fun HomeScreen(vm: ReaderViewModel, onAbout: () -> Unit) {
                 },
                 Modifier.fillMaxWidth(),
             ) {
-                Text("Ouvrir un CBZ")
+                Text(stringResource(R.string.home_open_cbz))
             }
             Spacer(Modifier.height(24.dp))
             Text(
-                if (modelsReady) "Modèles prêts" else loadingStatus,
+                stringResource(if (modelsReady) R.string.home_models_ready else loadingStatus),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            TextButton(onClick = onAbout) { Text("À propos et licences") }
+            TextButton(onClick = onAbout) { Text(stringResource(R.string.home_about)) }
         }
     }
 }
