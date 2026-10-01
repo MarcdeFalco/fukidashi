@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         // Identifiant Play Store : définitif une fois l'appli publiée
-        applicationId = "app.fukidashi"
+        applicationId = "com.hanko.fukidashi"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

@@ -7,7 +7,7 @@ set -euo pipefail
 export LC_ALL=en_US.UTF-8
 ADB="${ADB:-$HOME/Library/Android/sdk/platform-tools/adb}"
 SERIAL="${SERIAL:-RZCY12QPR0D}"
-PKG=app.fukidashi
+PKG=com.hanko.fukidashi
 ACTIVITY=$PKG/dev.marc.japanesehelper.BenchmarkActivity
 TMP=/data/local/tmp/jh
 # Dossier interne de l'appli (accessible via run-as, version debug seulement)

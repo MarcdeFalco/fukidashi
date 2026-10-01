@@ -4,7 +4,7 @@ Langue par défaut de la fiche : **anglais (en-US)**, avec une traduction **fran
 (Play Console → Présence sur le Play Store → Fiche principale → Gérer les traductions).
 
 ## Identité
-- **Identifiant** : `app.fukidashi` (définitif après la 1re publication)
+- **Identifiant** : `com.hanko.fukidashi` (enregistré dans la Play Console, ne peut plus changer)
 - **Catégorie** : Éducation / Education
 - **Prix** : gratuit, sans publicité ni achat intégré
 - **Contenu** : tout public (classification IARC à remplir dans la console)
